@@ -1,5 +1,6 @@
 #!lang:bash
 include ./Pfyfile.shells.pf
+include ./Pfyfile.build-helpers.pf
 
 task default-task
   describe This is a task from the default Pfyfile.pf

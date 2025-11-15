@@ -105,6 +105,128 @@ Place `#!lang:python` (or `#!lang:fish`) at the very top of a Pfyfile to set a r
 
 Because the snippets expand to real shell scripts, they inherit your `sudo=true`/remote host settings and obey per-task `env` just like regular `shell` lines. Treat this as a "test test runner" sandbox — there are zero safety guarantees when mixing exotic interpreters.
 
+### LLVM IR Output
+
+C, C++, and Fortran can emit LLVM IR instead of executing:
+
+```text
+task show-llvm
+  shell [lang:c-llvm] int main() { return 42; }
+  shell [lang:cpp-llvm] int main() { return 42; }
+  shell [lang:fortran-llvm] program hello; end program hello
+end
+```
+
+Available LLVM variants:
+- `c-llvm` / `c-ir` / `c-ll` - C to LLVM IR (text format)
+- `cpp-llvm` / `cpp-ir` / `cpp-ll` - C++ to LLVM IR
+- `c-llvm-bc` / `c-bc` - C to LLVM bitcode (then disassembled to IR)
+- `cpp-llvm-bc` / `cpp-bc` - C++ to LLVM bitcode
+- `fortran-llvm` / `fortran-ir` / `fortran-ll` - Fortran to LLVM IR (requires flang)
+
+### Build System Helpers
+
+The DSL includes dedicated verbs for common build systems. Use `build_detect` to analyze your project:
+
+```text
+task detect
+  describe Auto-detect build system
+  build_detect
+end
+```
+
+#### Makefile
+
+```text
+task build
+  describe Build with make
+  makefile all jobs=4
+end
+
+task rebuild
+  describe Clean and rebuild
+  makefile clean all verbose=true
+end
+```
+
+Options: `jobs=N`, `parallel=true`, `verbose=true`, plus any `VAR=value` make variables.
+
+#### CMake
+
+```text
+task cmake-build
+  describe Configure and build with CMake
+  cmake . build_dir=build build_type=Release
+end
+```
+
+Options: `build_dir=<path>`, `build_type=<Debug|Release|...>`, `generator=<Ninja|...>`, `target=<name>`, `jobs=N`, plus any `-D` CMake options as `OPTION=value`.
+
+#### Meson + Ninja
+
+```text
+task meson-build
+  describe Build with Meson
+  meson . build_dir=builddir buildtype=release
+end
+```
+
+Options: `build_dir=<path>`, `buildtype=<debug|release|...>`, `target=<name>`, plus any `-D` Meson options.
+
+#### Cargo (Rust)
+
+```text
+task cargo-build
+  describe Build Rust project
+  cargo build release=true
+end
+
+task cargo-test
+  describe Run tests
+  cargo test
+end
+```
+
+Options: `release=true`, `features=<list>`, `target=<triple>`, `manifest_path=<path>`, plus any cargo flags.
+
+#### Go
+
+```text
+task go-build
+  describe Build Go binary
+  go_build output=myapp tags=netgo
+end
+
+task go-test
+  describe Run Go tests
+  go_build subcommand=test race=true
+end
+```
+
+Options: `subcommand=<build|test|...>`, `output=<path>`, `tags=<list>`, `race=true`, `ldflags=<flags>`.
+
+#### Autotools (Configure)
+
+```text
+task configure
+  describe Run configure script
+  configure prefix=/usr/local shared=true ssl=true
+end
+```
+
+Options: `prefix=<path>`, `<feature>=true` → `--enable-<feature>`, `<feature>=false` → `--disable-<feature>`, `<opt>=<value>` → `--<opt>=<value>`.
+
+#### Just
+
+```text
+task just-build
+  describe Run justfile recipe
+  justfile build --verbose
+end
+```
+
+All arguments are passed directly to the `just` command.
+
 ## Includes
 
 Top-level in `Pfyfile.pf`:
