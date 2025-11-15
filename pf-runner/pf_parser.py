@@ -320,7 +320,12 @@ POLYGLOT_LANGS: Dict[str, Callable[[str, List[str]], str]] = {
     "rust": _compile_profile(".rs", "rustc {src} -o {bin}", "{bin}"),
     "c": _compile_profile(".c", "clang -x c {src} -o {bin}", "{bin}"),
     "cpp": _compile_profile(".cc", "clang++ {src} -o {bin}", "{bin}"),
+    "c-llvm": _compile_profile(".c", "clang -x c -S -emit-llvm {src} -o {bin}.ll && cat {bin}.ll", "echo '(LLVM IR generated)'"),
+    "cpp-llvm": _compile_profile(".cc", "clang++ -S -emit-llvm {src} -o {bin}.ll && cat {bin}.ll", "echo '(LLVM IR generated)'"),
+    "c-llvm-bc": _compile_profile(".c", "clang -x c -c -emit-llvm {src} -o {bin}.bc && llvm-dis {bin}.bc -o {bin}.ll && cat {bin}.ll", "echo '(LLVM bitcode generated)'"),
+    "cpp-llvm-bc": _compile_profile(".cc", "clang++ -c -emit-llvm {src} -o {bin}.bc && llvm-dis {bin}.bc -o {bin}.ll && cat {bin}.ll", "echo '(LLVM bitcode generated)'"),
     "fortran": _compile_profile(".f90", "gfortran {src} -o {bin}", "{bin}"),
+    "fortran-llvm": _compile_profile(".f90", "flang {src} -S -emit-llvm -o {bin}.ll && cat {bin}.ll", "echo '(LLVM IR generated)'"),
     "asm": _compile_profile(".s", "clang -x assembler {src} -o {bin}", "{bin}"),
     "zig": _compile_profile(".zig", "zig build-exe -O Debug -femit-bin={bin} {src}", "{bin}"),
     "nim": _compile_profile(".nim", "nim c -o:{bin} {src}", "{bin}"),
@@ -361,6 +366,14 @@ POLYGLOT_ALIASES = {
     "clang++": "cpp",
     "g++": "cpp",
     "gcc": "c",
+    "c-ir": "c-llvm",
+    "c-ll": "c-llvm",
+    "cpp-ir": "cpp-llvm",
+    "cpp-ll": "cpp-llvm",
+    "c-bc": "c-llvm-bc",
+    "cpp-bc": "cpp-llvm-bc",
+    "fortran-ll": "fortran-llvm",
+    "fortran-ir": "fortran-llvm",
 
     # Others common
     "golang": "go",
@@ -770,6 +783,194 @@ def _exec_line_fabric(
     # 'env' is handled in the runner loop (stateful), so treat as no-op here
     if op == "env":
         return 0
+
+    # ---------- Build System Helpers ----------
+    if op == "makefile" or op == "make":
+        # makefile [target...] [VAR=value...] [clean] [verbose] [jobs=N]
+        pos, kv = _split_kv(args)
+        make_args = []
+        if kv.get("jobs"):
+            make_args.append(f"-j{kv['jobs']}")
+        elif kv.get("parallel") == "true":
+            make_args.append("-j")
+        if kv.get("verbose") == "true":
+            make_args.append("V=1")
+        # Add any VAR=value pairs
+        for k, v in kv.items():
+            if k not in {"jobs", "parallel", "verbose"}:
+                make_args.append(f"{k}={shlex.quote(v)}")
+        # Add targets
+        make_args.extend([shlex.quote(t) for t in pos])
+        cmd = "make " + " ".join(make_args) if make_args else "make"
+        return run(cmd)
+
+    if op == "cmake":
+        # cmake [source_dir] [build_dir] [generator=...] [build_type=...] [options...]
+        pos, kv = _split_kv(args)
+        source_dir = pos[0] if pos else "."
+        build_dir = kv.get("build_dir", "build")
+        
+        # Configure step
+        configure_args = ["cmake", "-S", shlex.quote(source_dir), "-B", shlex.quote(build_dir)]
+        if kv.get("generator"):
+            configure_args.extend(["-G", shlex.quote(kv["generator"])])
+        if kv.get("build_type"):
+            configure_args.append(f"-DCMAKE_BUILD_TYPE={shlex.quote(kv['build_type'])}")
+        # Add any other -D options
+        for k, v in kv.items():
+            if k not in {"build_dir", "generator", "build_type", "target", "jobs"}:
+                configure_args.append(f"-D{k}={shlex.quote(v)}")
+        
+        rc = run(" ".join(configure_args))
+        if rc != 0:
+            return rc
+        
+        # Build step
+        build_args = ["cmake", "--build", shlex.quote(build_dir)]
+        if kv.get("jobs"):
+            build_args.extend(["-j", kv["jobs"]])
+        if kv.get("target"):
+            build_args.extend(["--target", shlex.quote(kv["target"])])
+        
+        return run(" ".join(build_args))
+
+    if op == "meson" or op == "ninja":
+        # meson [source_dir] [build_dir] [options...]
+        pos, kv = _split_kv(args)
+        source_dir = pos[0] if pos else "."
+        build_dir = kv.get("build_dir", "builddir")
+        
+        # Check if build directory already exists (reconfigure vs initial setup)
+        check_cmd = f"test -f {shlex.quote(build_dir)}/build.ninja"
+        rc_check = run(check_cmd)
+        
+        if rc_check != 0:
+            # Initial setup
+            setup_args = ["meson", "setup", shlex.quote(build_dir), shlex.quote(source_dir)]
+            if kv.get("buildtype"):
+                setup_args.append(f"--buildtype={shlex.quote(kv['buildtype'])}")
+            for k, v in kv.items():
+                if k not in {"build_dir", "buildtype", "target"}:
+                    setup_args.append(f"-D{k}={shlex.quote(v)}")
+            rc = run(" ".join(setup_args))
+            if rc != 0:
+                return rc
+        
+        # Compile
+        compile_args = ["meson", "compile", "-C", shlex.quote(build_dir)]
+        if kv.get("target"):
+            compile_args.append(shlex.quote(kv["target"]))
+        
+        return run(" ".join(compile_args))
+
+    if op == "cargo":
+        # cargo <subcommand> [args...] [release] [features=...] [target=...]
+        if not args:
+            raise ValueError("cargo requires a subcommand (build, test, run, etc.)")
+        pos, kv = _split_kv(args)
+        subcommand = pos[0]
+        cargo_args = ["cargo", subcommand]
+        
+        if kv.get("release") == "true":
+            cargo_args.append("--release")
+        if kv.get("features"):
+            cargo_args.extend(["--features", shlex.quote(kv["features"])])
+        if kv.get("target"):
+            cargo_args.extend(["--target", shlex.quote(kv["target"])])
+        if kv.get("manifest_path"):
+            cargo_args.extend(["--manifest-path", shlex.quote(kv["manifest_path"])])
+        
+        # Add remaining positional args
+        cargo_args.extend([shlex.quote(a) for a in pos[1:]])
+        
+        # Add remaining kv pairs as flags
+        for k, v in kv.items():
+            if k not in {"release", "features", "target", "manifest_path"}:
+                if v == "true":
+                    cargo_args.append(f"--{k}")
+                else:
+                    cargo_args.extend([f"--{k}", shlex.quote(v)])
+        
+        return run(" ".join(cargo_args))
+
+    if op == "go_build" or op == "gobuild":
+        # go_build [subcommand=build] [output=...] [tags=...] [race] [package]
+        pos, kv = _split_kv(args)
+        subcommand = kv.get("subcommand", "build")
+        go_args = ["go", subcommand]
+        
+        if kv.get("output"):
+            go_args.extend(["-o", shlex.quote(kv["output"])])
+        if kv.get("tags"):
+            go_args.extend(["-tags", shlex.quote(kv["tags"])])
+        if kv.get("race") == "true":
+            go_args.append("-race")
+        if kv.get("ldflags"):
+            go_args.extend(["-ldflags", shlex.quote(kv["ldflags"])])
+        
+        # Add package path if provided
+        go_args.extend([shlex.quote(p) for p in pos])
+        
+        return run(" ".join(go_args))
+
+    if op == "configure":
+        # configure [prefix=...] [options...]
+        pos, kv = _split_kv(args)
+        configure_script = pos[0] if pos else "./configure"
+        configure_args = [configure_script]
+        
+        if kv.get("prefix"):
+            configure_args.append(f"--prefix={shlex.quote(kv['prefix'])}")
+        
+        # Add boolean flags
+        for k, v in kv.items():
+            if k == "prefix":
+                continue
+            if v == "true":
+                configure_args.append(f"--enable-{k}")
+            elif v == "false":
+                configure_args.append(f"--disable-{k}")
+            else:
+                configure_args.append(f"--{k}={shlex.quote(v)}")
+        
+        return run(" ".join(configure_args))
+
+    if op == "justfile" or op == "just":
+        # justfile [recipe] [args...]
+        just_args = ["just"]
+        just_args.extend([shlex.quote(a) for a in args])
+        return run(" ".join(just_args))
+
+    if op == "build_detect" or op == "detect_build":
+        # Detect build system and suggest command
+        # This is informational only - prints what it finds
+        detection_script = """
+if [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; then
+    echo "Detected: Makefile (use 'makefile' verb)"
+fi
+if [ -f CMakeLists.txt ]; then
+    echo "Detected: CMake (use 'cmake' verb)"
+fi
+if [ -f meson.build ]; then
+    echo "Detected: Meson (use 'meson' verb)"
+fi
+if [ -f Cargo.toml ]; then
+    echo "Detected: Rust/Cargo (use 'cargo build' verb)"
+fi
+if [ -f go.mod ] || [ -f go.sum ]; then
+    echo "Detected: Go module (use 'go_build' verb)"
+fi
+if [ -f configure ] || [ -f configure.ac ]; then
+    echo "Detected: Autotools/Configure (use 'configure' verb)"
+fi
+if [ -f justfile ] || [ -f Justfile ]; then
+    echo "Detected: Just (use 'justfile' verb)"
+fi
+if [ -f build.ninja ]; then
+    echo "Detected: Ninja build files (use 'ninja' verb or run ninja directly)"
+fi
+"""
+        return run(detection_script)
 
     raise ValueError(f"Unknown verb: {op}")
 
