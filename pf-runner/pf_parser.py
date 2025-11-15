@@ -378,26 +378,7 @@ POLYGLOT_ALIASES = {
     "fishshell": "fish",
     "shellscript": "bash",
     "dashshell": "dash",
-}POLYGLOT_ALIASES = {
-    "py": "python",
-    "python3": "python",
-    "shell": "bash",
-    "sh": "sh",
-    "zshell": "zsh",
-    "golang": "go",
-    "c++": "cpp",
-    "cxx": "cpp",
-    "clang": "c",
-    "clang++": "cpp",
     "asm86": "asm",
-    "fortran90": "fortran",
-    "gfortran": "fortran",
-    "java": "java-openjdk",
-    "java-openjdk": "java-openjdk",
-    "java-android-google": "java-android",
-    "java-android": "java-android",
-    "android-java": "java-android",
-    "fishshell": "fish",
 }
 
 
