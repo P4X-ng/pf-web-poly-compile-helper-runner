@@ -9,3 +9,11 @@ demos/**/target/
 demos/**/Cargo.lock
 node_modules/
 *.log
+
+# CodeQL artifacts
+_codeql_*
+
+# pf-runner build artifacts
+pf-runner/build/
+pf-runner/dist/
+pf-runner/*.spec
