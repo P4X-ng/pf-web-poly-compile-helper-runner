@@ -135,6 +135,51 @@ task detect
 end
 ```
 
+#### Automagic Builder 🪄
+
+**NEW!** The `autobuild` verb automatically detects your project's build system and runs the appropriate build command with zero configuration:
+
+```text
+task quick-build
+  describe Build any project automatically
+  autobuild
+end
+
+task release-build
+  describe Release build with auto-detection
+  autobuild release=true jobs=8
+end
+
+task monorepo-build
+  describe Build multiple modules
+  autobuild dir=./frontend
+  autobuild dir=./backend
+  autobuild dir=./shared
+end
+```
+
+**Supported Build Systems (in priority order):**
+1. **Cargo** (Cargo.toml) → `cargo build`
+2. **Go** (go.mod) → `go build`
+3. **npm** (package.json) → `npm run build` or `npm install`
+4. **Python** (setup.py, pyproject.toml) → `pip install -e .` or `python setup.py build`
+5. **Maven** (pom.xml) → `mvn compile`
+6. **Gradle** (build.gradle) → `gradle build`
+7. **CMake** (CMakeLists.txt) → `cmake` + `cmake --build`
+8. **Meson** (meson.build) → `meson setup` + `meson compile`
+9. **Just** (justfile) → `just`
+10. **Autotools** (configure) → `./configure` + `make`
+11. **Make** (Makefile) → `make`
+12. **Ninja** (build.ninja) → `ninja`
+
+**Parameters:**
+- `release=true` - Build in release/optimized mode
+- `jobs=N` - Number of parallel jobs (default: 4)
+- `dir=<path>` - Build a specific subdirectory
+- `target=<target>` - Custom build target (for Make, etc.)
+
+The automagic builder prioritizes specific build systems over generic ones (e.g., CMake over generated Makefiles), ensuring the "source of truth" build system is always used.
+
 #### Makefile
 
 ```text

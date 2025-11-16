@@ -21,6 +21,48 @@ This repository provides:
 - **Modular configuration**: Split tasks into multiple `.pf` files with `include`
 - **Parameter interpolation**: Pass runtime parameters to tasks
 
+### Automagic Builder 🪄
+The **automagic builder** is an intelligent build system that automatically detects your project type and runs the appropriate build command - no configuration needed! Just run `pf autobuild` and it handles the rest.
+
+**Supported Build Systems:**
+- **Rust** (`Cargo.toml`) → `cargo build`
+- **Go** (`go.mod`) → `go build`
+- **Node.js** (`package.json`) → `npm run build` or `npm install`
+- **Python** (`setup.py`, `pyproject.toml`) → `pip install -e .` or `python setup.py build`
+- **Java/Maven** (`pom.xml`) → `mvn compile`
+- **Java/Gradle** (`build.gradle`, `build.gradle.kts`) → `gradle build`
+- **CMake** (`CMakeLists.txt`) → `cmake` + `cmake --build`
+- **Meson** (`meson.build`) → `meson setup` + `meson compile`
+- **Make** (`Makefile`, `makefile`, `GNUmakefile`) → `make`
+- **Just** (`justfile`, `Justfile`) → `just`
+- **Autotools** (`configure`, `configure.ac`) → `./configure` + `make`
+- **Ninja** (`build.ninja`) → `ninja`
+
+**Smart Detection Features:**
+- Prioritizes more specific build systems (e.g., CMake over raw Makefile)
+- Handles common directory structures and patterns
+- Supports release/debug builds with `release=true` parameter
+- Configurable parallel jobs with `jobs=N` parameter
+- Can target specific subdirectories with `dir=<path>` parameter
+
+**Quick Examples:**
+```bash
+# Automatically detect and build any project
+pf autobuild
+
+# Build in release mode
+pf autobuild release=true
+
+# Use 8 parallel jobs
+pf autobuild jobs=8
+
+# Build a subdirectory
+pf autobuild dir=./subproject
+
+# Just detect what build system would be used (no build)
+pf build_detect
+```
+
 ### WebAssembly Compilation
 - **Rust**: Build WASM modules with wasm-pack
 - **C**: Compile to WASM using Emscripten
@@ -234,6 +276,128 @@ pf demo-python
 pf demo-rust
 ```
 
+### Automagic Builder Examples
+
+The automagic builder automatically detects your project's build system and runs the appropriate build command. No manual configuration needed!
+
+#### Basic Usage
+
+```bash
+# Let pf auto-detect and build your project
+pf autobuild
+```
+
+The builder will:
+1. Scan the current directory for build system files
+2. Detect the most appropriate build system (prioritizes specific over generic)
+3. Execute the correct build command with sensible defaults
+
+#### Advanced Usage
+
+```bash
+# Build in release/optimized mode
+pf autobuild release=true
+
+# Use more parallel jobs for faster builds
+pf autobuild jobs=8
+
+# Build a specific subdirectory
+pf autobuild dir=./my-subproject
+
+# Combine parameters
+pf autobuild release=true jobs=16 dir=./backend
+```
+
+#### Detection Priority
+
+When multiple build files are present, the automagic builder follows this priority order:
+
+1. **Rust** (Cargo.toml) - Most specific, well-defined
+2. **Go** (go.mod) - Language-specific module
+3. **Node.js** (package.json) - JavaScript ecosystem
+4. **Python** (setup.py, pyproject.toml) - Python packages
+5. **Maven** (pom.xml) - Java/JVM projects
+6. **Gradle** (build.gradle) - Java/JVM projects
+7. **CMake** (CMakeLists.txt) - Cross-platform C/C++
+8. **Meson** (meson.build) - Modern build system
+9. **Just** (justfile) - Command runner
+10. **Autotools** (configure) - Classic Unix builds
+11. **Make** (Makefile) - Generic fallback
+12. **Ninja** (build.ninja) - Low-level build files
+
+This ensures that projects with both a CMakeLists.txt and a generated Makefile will use CMake (the source of truth) rather than the generated Makefile.
+
+#### Detection Only
+
+Want to see what would be built without actually building?
+
+```bash
+# Just show what build system is detected
+pf build_detect
+```
+
+Output example:
+```
+✓ Detected: CMake (use 'cmake' verb)
+✓ Detected: Makefile (use 'makefile' verb)
+```
+
+#### Creating Automagic Build Tasks
+
+Use the `autobuild` verb in your own tasks:
+
+```text
+task quick-build
+  describe Fast build with auto-detection
+  autobuild jobs=8
+end
+
+task release
+  describe Release build with auto-detection
+  autobuild release=true jobs=12
+end
+
+task build-all-modules
+  describe Build multiple modules automatically
+  autobuild dir=./frontend
+  autobuild dir=./backend
+  autobuild dir=./shared
+end
+```
+
+#### Real-World Examples
+
+**Rust Project:**
+```bash
+# Auto-detects Cargo.toml and runs: cargo build
+pf autobuild
+
+# Runs: cargo build --release
+pf autobuild release=true
+```
+
+**Node.js Project:**
+```bash
+# Auto-detects package.json and runs: npm run build (or npm install)
+pf autobuild
+```
+
+**CMake C++ Project:**
+```bash
+# Auto-detects CMakeLists.txt and runs:
+# cmake -B build -DCMAKE_BUILD_TYPE=Release
+# cmake --build build -j 4
+pf autobuild release=true
+```
+
+**Monorepo with Multiple Projects:**
+```bash
+# Build each subproject with its own build system
+pf autobuild dir=./rust-service
+pf autobuild dir=./web-frontend
+pf autobuild dir=./c-lib
+```
+
 ### Build System Integration
 
 ```text
@@ -357,6 +521,9 @@ Additional documentation in `pf-runner/`:
 
 | Command | Description |
 |---------|-------------|
+| `pf autobuild` | **Automagic builder** - auto-detect and build any project |
+| `pf autobuild release=true` | Build in release/optimized mode |
+| `pf build_detect` | Detect build system without building |
 | `pf web-dev` | Start development server (default: localhost:8080) |
 | `pf web-test` | Run Playwright tests |
 | `pf web-build-all` | Build all WASM modules (Rust, C, Fortran, WAT) |
