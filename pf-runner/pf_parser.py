@@ -969,8 +969,230 @@ fi
 if [ -f build.ninja ]; then
     echo "Detected: Ninja build files (use 'ninja' verb or run ninja directly)"
 fi
+if [ -f package.json ]; then
+    echo "Detected: Node.js/npm project (package.json found)"
+fi
+if [ -f setup.py ] || [ -f pyproject.toml ]; then
+    echo "Detected: Python project (setup.py or pyproject.toml found)"
+fi
+if [ -f build.gradle ] || [ -f build.gradle.kts ] || [ -f pom.xml ]; then
+    echo "Detected: Java/JVM project (Gradle or Maven)"
+fi
 """
         return run(detection_script)
+
+    if op == "autobuild" or op == "auto_build":
+        # Automagic builder - detects build system and runs appropriate build command
+        # Supports: Cargo, Go, CMake, Meson, Make, npm, Python, Maven/Gradle, Just, Autotools
+        # Optional parameters: target=<target>, jobs=<N>, release=<true/false>, dir=<path>
+        
+        pos, kv = _split_kv(args)
+        target_dir = kv.get("dir", ".")
+        jobs = kv.get("jobs", "4")
+        is_release = kv.get("release", "").lower() in ("true", "yes", "1")
+        custom_target = kv.get("target", "")
+        
+        autobuild_script = f"""
+set -e
+cd {shlex.quote(target_dir)}
+
+echo "==> Automagic Builder: Detecting build system..."
+
+# Priority order for build system detection (most specific to most general)
+BUILD_SYSTEM=""
+
+# 1. Check for Rust/Cargo (high priority - well-defined)
+if [ -f Cargo.toml ]; then
+    BUILD_SYSTEM="cargo"
+    echo "✓ Detected: Rust/Cargo project"
+fi
+
+# 2. Check for Go module (high priority - well-defined)
+if [ -z "$BUILD_SYSTEM" ] && [ -f go.mod ]; then
+    BUILD_SYSTEM="go"
+    echo "✓ Detected: Go module"
+fi
+
+# 3. Check for Node.js/npm (high priority for web projects)
+if [ -z "$BUILD_SYSTEM" ] && [ -f package.json ]; then
+    BUILD_SYSTEM="npm"
+    echo "✓ Detected: Node.js/npm project"
+fi
+
+# 4. Check for Python project
+if [ -z "$BUILD_SYSTEM" ] && ([ -f setup.py ] || [ -f pyproject.toml ]); then
+    BUILD_SYSTEM="python"
+    echo "✓ Detected: Python project"
+fi
+
+# 5. Check for Java/Maven
+if [ -z "$BUILD_SYSTEM" ] && [ -f pom.xml ]; then
+    BUILD_SYSTEM="maven"
+    echo "✓ Detected: Maven project"
+fi
+
+# 6. Check for Java/Gradle
+if [ -z "$BUILD_SYSTEM" ] && ([ -f build.gradle ] || [ -f build.gradle.kts ]); then
+    BUILD_SYSTEM="gradle"
+    echo "✓ Detected: Gradle project"
+fi
+
+# 7. Check for CMake (higher priority than raw Makefile)
+if [ -z "$BUILD_SYSTEM" ] && [ -f CMakeLists.txt ]; then
+    BUILD_SYSTEM="cmake"
+    echo "✓ Detected: CMake project"
+fi
+
+# 8. Check for Meson
+if [ -z "$BUILD_SYSTEM" ] && [ -f meson.build ]; then
+    BUILD_SYSTEM="meson"
+    echo "✓ Detected: Meson project"
+fi
+
+# 9. Check for Just
+if [ -z "$BUILD_SYSTEM" ] && ([ -f justfile ] || [ -f Justfile ]); then
+    BUILD_SYSTEM="just"
+    echo "✓ Detected: Just build"
+fi
+
+# 10. Check for Autotools (before generic Makefile)
+if [ -z "$BUILD_SYSTEM" ] && ([ -f configure ] || [ -f configure.ac ]); then
+    BUILD_SYSTEM="autotools"
+    echo "✓ Detected: Autotools/Configure"
+fi
+
+# 11. Check for generic Makefile (lowest priority)
+if [ -z "$BUILD_SYSTEM" ] && ([ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]); then
+    BUILD_SYSTEM="make"
+    echo "✓ Detected: Makefile"
+fi
+
+# 12. Check for Ninja build files
+if [ -z "$BUILD_SYSTEM" ] && [ -f build.ninja ]; then
+    BUILD_SYSTEM="ninja"
+    echo "✓ Detected: Ninja build"
+fi
+
+# If no build system detected, error out
+if [ -z "$BUILD_SYSTEM" ]; then
+    echo "✗ Error: No build system detected in $(pwd)"
+    echo "Supported: Cargo.toml, go.mod, package.json, CMakeLists.txt, Makefile, meson.build, etc."
+    exit 1
+fi
+
+echo "==> Building with $BUILD_SYSTEM..."
+
+# Execute appropriate build command based on detected system
+case "$BUILD_SYSTEM" in
+    cargo)
+        if [ "{is_release}" = "True" ]; then
+            echo "Running: cargo build --release"
+            cargo build --release
+        else
+            echo "Running: cargo build"
+            cargo build
+        fi
+        ;;
+    go)
+        if [ -n "{custom_target}" ]; then
+            echo "Running: go build -o {custom_target}"
+            go build -o {shlex.quote(custom_target)}
+        else
+            echo "Running: go build"
+            go build
+        fi
+        ;;
+    npm)
+        # Check for build script in package.json
+        if grep -q '"build"' package.json 2>/dev/null; then
+            echo "Running: npm run build"
+            npm run build
+        else
+            echo "Running: npm install"
+            npm install
+        fi
+        ;;
+    python)
+        if [ -f pyproject.toml ]; then
+            echo "Running: pip install -e ."
+            pip install -e .
+        elif [ -f setup.py ]; then
+            echo "Running: python setup.py build"
+            python setup.py build
+        fi
+        ;;
+    maven)
+        echo "Running: mvn compile"
+        mvn compile
+        ;;
+    gradle)
+        if [ -x ./gradlew ]; then
+            echo "Running: ./gradlew build"
+            ./gradlew build
+        else
+            echo "Running: gradle build"
+            gradle build
+        fi
+        ;;
+    cmake)
+        BUILD_DIR="build"
+        BUILD_TYPE="Release"
+        if [ "{is_release}" = "False" ]; then
+            BUILD_TYPE="Debug"
+        fi
+        echo "Running: cmake -B $BUILD_DIR -DCMAKE_BUILD_TYPE=$BUILD_TYPE"
+        cmake -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+        echo "Running: cmake --build $BUILD_DIR -j {jobs}"
+        cmake --build "$BUILD_DIR" -j {jobs}
+        ;;
+    meson)
+        BUILD_DIR="builddir"
+        BUILDTYPE="release"
+        if [ "{is_release}" = "False" ]; then
+            BUILDTYPE="debug"
+        fi
+        if [ ! -d "$BUILD_DIR" ]; then
+            echo "Running: meson setup $BUILD_DIR --buildtype=$BUILDTYPE"
+            meson setup "$BUILD_DIR" --buildtype="$BUILDTYPE"
+        fi
+        echo "Running: meson compile -C $BUILD_DIR -j {jobs}"
+        meson compile -C "$BUILD_DIR" -j {jobs}
+        ;;
+    make)
+        TARGET="{custom_target if custom_target else 'all'}"
+        echo "Running: make $TARGET -j{jobs}"
+        make $TARGET -j{jobs}
+        ;;
+    just)
+        if [ -n "{custom_target}" ]; then
+            echo "Running: just {custom_target}"
+            just {shlex.quote(custom_target)}
+        else
+            echo "Running: just"
+            just
+        fi
+        ;;
+    autotools)
+        if [ ! -f config.status ]; then
+            echo "Running: ./configure"
+            ./configure
+        fi
+        echo "Running: make -j{jobs}"
+        make -j{jobs}
+        ;;
+    ninja)
+        echo "Running: ninja -j{jobs}"
+        ninja -j{jobs}
+        ;;
+    *)
+        echo "✗ Error: Unknown build system: $BUILD_SYSTEM"
+        exit 1
+        ;;
+esac
+
+echo "==> Build completed successfully with $BUILD_SYSTEM"
+"""
+        return run(autobuild_script)
 
     raise ValueError(f"Unknown verb: {op}")
 

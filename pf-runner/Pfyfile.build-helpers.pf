@@ -5,6 +5,21 @@ task build-helper-demo
   build_detect
 end
 
+task autobuild-demo
+  describe Automagic builder - automatically detects and builds project
+  autobuild
+end
+
+task autobuild-release
+  describe Automagic builder in release mode
+  autobuild release=true
+end
+
+task autobuild-with-jobs
+  describe Automagic builder with custom job count
+  autobuild jobs=8
+end
+
 task make-example
   describe Run make with common options
   makefile clean all jobs=4
