@@ -595,14 +595,31 @@ Additional documentation in `pf-runner/`:
 | `pf web-build-c` | Build C → WASM |
 | `pf web-build-wat` | Assemble WAT → WASM |
 | `pf web-build-fortran` | Build Fortran → WASM |
+| `pf install-base` | Install base pf runner and dependencies |
+| `pf install-web` | Install web/WASM development tools |
+| `pf install` | Install everything (base + web) |
 | `pf list` | List all available tasks |
 
 ## Troubleshooting
 
-### pf command not found
-- Run `./start.sh` to install pf-runner
-- Or use `./pf-runner/pf` instead of `pf`
+### Installation Issues
+
+#### pf command not found
+- Run `./install.sh base` to install pf-runner
+- Or run `source ~/.bashrc` to reload your shell configuration
 - Check that `~/.local/bin` is in your PATH
+- Legacy option: Run `./start.sh` to use the older installer
+
+#### Fabric import error
+- Ensure Fabric is installed: `pip install --user "fabric>=3.2,<4"`
+- Verify with: `python3 -c "import fabric; print(fabric.__version__)"`
+- Re-run: `./install.sh base`
+
+#### Installation script fails
+- Check that you have sudo access for system packages
+- Ensure internet connection is available
+- Review error messages for specific missing dependencies
+- Try manual installation steps from README
 
 ### WASM build failures
 - **Rust**: Ensure `wasm-pack` is installed: `cargo install wasm-pack`
