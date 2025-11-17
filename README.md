@@ -69,6 +69,17 @@ pf build_detect
 - **Fortran**: Experimental WASM support via LFortran
 - **WAT**: Assemble WebAssembly text format with WABT
 
+### LLVM Binary Lifting 🔬
+Convert compiled binaries back to LLVM IR for analysis, optimization, and transformation:
+- **RetDec**: Automatic binary-to-LLVM lifting for multiple architectures (x86, ARM, MIPS)
+- **McSema**: High-fidelity lifting using Remill (requires IDA Pro for CFG recovery)
+- **LLVM Tools**: Built-in utilities for bitcode extraction and disassembly
+- **Cross-Architecture**: Retarget binaries to different platforms via LLVM IR
+- **Optimization**: Apply LLVM optimization passes to legacy/closed-source code
+- **Security Analysis**: Instrument and analyze binaries for vulnerabilities
+
+See [LLVM Lifting Guide](docs/LLVM-LIFTING.md) for complete documentation.
+
 ### Testing & Development
 - **Live dev server**: Static HTTP server with CORS headers for WASM
 - **Playwright tests**: Automated browser testing for WASM modules
@@ -616,6 +627,8 @@ npx playwright show-report
 ## Documentation
 
 - **pf-runner Documentation**: See [`pf-runner/README.md`](pf-runner/README.md) for comprehensive pf runner documentation
+- **LLVM Lifting Guide**: See [`docs/LLVM-LIFTING.md`](docs/LLVM-LIFTING.md) for binary lifting documentation
+- **Binary Lifting Examples**: See [`demos/binary-lifting/README.md`](demos/binary-lifting/README.md) for lifting tutorials
 - **Web Demo Documentation**: See [`demos/pf-web-polyglot-demo-plus-c/README.md`](demos/pf-web-polyglot-demo-plus-c/README.md)
 - **WIT Components**: See [`pf/wit/README.md`](pf/wit/README.md)
 
@@ -651,6 +664,15 @@ Additional documentation in `pf-runner/`:
 | `pf web-build-fortran` | Build Fortran → WASM |
 | `pf web-build-fortran-llvm` | Build Fortran → LLVM IR (O3 by default) |
 | `pf web-build-fortran-llvm parallel=true` | Build Fortran → LLVM IR with OpenMP |
+| **Binary Lifting Commands** | |
+| `pf install-retdec` | Install RetDec binary lifter |
+| `pf build-lifting-examples` | Build example binaries for lifting demos |
+| `pf lift-binary-retdec binary=<path>` | Lift binary to LLVM IR using RetDec |
+| `pf lift-inspect binary=<path>` | Inspect binary with LLVM tools |
+| `pf optimize-lifted-ir input=<file.ll>` | Optimize lifted LLVM IR |
+| `pf test-lifting-workflow` | Test complete lifting workflow |
+| `pf lifting-help` | Show detailed lifting commands help |
+| **Installation & Setup** | |
 | `pf install-base` | Install base pf runner and dependencies |
 | `pf install-web` | Install web/WASM development tools |
 | `pf install` | Install everything (base + web) |

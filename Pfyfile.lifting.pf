@@ -1,0 +1,158 @@
+# LLVM Binary Lifting Tasks
+# This file contains tasks for lifting compiled binaries to LLVM IR
+
+# ============================================================================
+# Installation Tasks
+# ============================================================================
+
+task install-retdec
+  describe Install RetDec for binary lifting to LLVM IR
+  shell_lang bash
+  shell bash tools/lifting/install-retdec.sh
+end
+
+task install-lifting-tools
+  describe Install all LLVM lifting tools
+  shell pf install-retdec
+end
+
+# ============================================================================
+# Example Building Tasks
+# ============================================================================
+
+task build-lifting-examples
+  describe Build all example binaries for lifting demonstrations
+  shell_lang bash
+  shell cd demos/binary-lifting/examples && mkdir -p bin output
+  shell cd demos/binary-lifting/examples && gcc -O0 -g simple_math.c -o bin/simple_math_O0
+  shell cd demos/binary-lifting/examples && gcc -O2 simple_math.c -o bin/simple_math_O2
+  shell cd demos/binary-lifting/examples && gcc -O3 simple_math.c -o bin/simple_math
+  shell cd demos/binary-lifting/examples && gcc -O0 -g string_ops.c -o bin/string_ops_O0
+  shell cd demos/binary-lifting/examples && gcc -O2 string_ops.c -o bin/string_ops_O2
+  shell cd demos/binary-lifting/examples && gcc -O3 string_ops.c -o bin/string_ops
+  shell cd demos/binary-lifting/examples && gcc -O0 -g loop_example.c -o bin/loop_example_O0
+  shell cd demos/binary-lifting/examples && gcc -O2 loop_example.c -o bin/loop_example_O2
+  shell cd demos/binary-lifting/examples && gcc -O3 loop_example.c -o bin/loop_example
+  shell echo "All examples built successfully!"
+  shell ls -lh demos/binary-lifting/examples/bin/
+end
+
+task clean-lifting-examples
+  describe Clean built binaries and lifted output
+  shell_lang bash
+  shell cd demos/binary-lifting && rm -rf examples/bin examples/output
+  shell cd demos/binary-lifting && mkdir -p examples/bin examples/output
+  shell echo "Cleaned lifting examples"
+end
+
+# ============================================================================
+# Binary Lifting Tasks - RetDec
+# ============================================================================
+
+task lift-binary-retdec
+  describe Lift a binary to LLVM IR using RetDec (binary=/path/to/binary)
+  shell_lang bash
+  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
+  shell mkdir -p ${output_dir:-demos/binary-lifting/examples/output}
+  shell retdec-decompiler.py --backend llvmir --no-memory-limit ${binary} -o ${output_dir:-demos/binary-lifting/examples/output}/$(basename ${binary}).ll
+  shell echo "Generated LLVM IR: ${output_dir:-demos/binary-lifting/examples/output}/$(basename ${binary}).ll"
+end
+
+task lift-examples-retdec
+  describe Lift all example binaries using RetDec
+  shell pf lift-binary-retdec binary=demos/binary-lifting/examples/bin/simple_math
+  shell pf lift-binary-retdec binary=demos/binary-lifting/examples/bin/string_ops
+  shell pf lift-binary-retdec binary=demos/binary-lifting/examples/bin/loop_example
+  shell echo "All examples lifted!"
+  shell ls -lh demos/binary-lifting/examples/output/
+end
+
+# ============================================================================
+# Binary Lifting Tasks - Simple LLVM Tools
+# ============================================================================
+
+task lift-inspect
+  describe Inspect a binary with LLVM tools (binary=/path/to/binary)
+  shell_lang bash
+  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
+  shell echo "Binary Information:"
+  shell file ${binary}
+  shell echo "Size and Sections:"
+  shell size ${binary} || echo "size command not available"
+  shell echo "LLVM Object Dump - first 50 lines:"
+  shell llvm-objdump -d ${binary} 2>/dev/null | head -50 || echo "Binary format not supported by llvm-objdump"
+  shell echo "Checking for embedded LLVM bitcode:"
+  shell llvm-bcanalyzer ${binary} 2>/dev/null && echo "This file contains LLVM bitcode!" || echo "No embedded LLVM bitcode found"
+end
+
+task lift-disassemble
+  describe Disassemble a binary to assembly (binary=/path/to/binary)
+  shell_lang bash
+  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
+  shell mkdir -p ${output_dir:-demos/binary-lifting/examples/output}
+  shell llvm-objdump -d ${binary} > ${output_dir:-demos/binary-lifting/examples/output}/$(basename ${binary}).asm 2>&1
+  shell echo "Generated: ${output_dir:-demos/binary-lifting/examples/output}/$(basename ${binary}).asm"
+  shell head -30 ${output_dir:-demos/binary-lifting/examples/output}/$(basename ${binary}).asm
+end
+
+task lift-examples-simple
+  describe Inspect and analyze all examples with simple LLVM tools
+  shell pf lift-inspect binary=demos/binary-lifting/examples/bin/simple_math
+  shell pf lift-inspect binary=demos/binary-lifting/examples/bin/string_ops
+  shell pf lift-inspect binary=demos/binary-lifting/examples/bin/loop_example
+end
+
+# ============================================================================
+# Analysis and Optimization Tasks
+# ============================================================================
+
+task optimize-lifted-ir
+  describe Optimize lifted LLVM IR (input=/path/to/file.ll, opt_level=3)
+  shell_lang bash
+  shell test -n "${input}" || (echo "Error: input parameter required" && exit 1)
+  shell opt-18 -S -O${opt_level:-3} ${input} -o ${output:-${input%.ll}_opt.ll}
+  shell echo "Original size: $(wc -l < ${input}) lines"
+  shell echo "Optimized size: $(wc -l < ${output:-${input%.ll}_opt.ll}) lines"
+  shell echo "Generated: ${output:-${input%.ll}_opt.ll}"
+end
+
+task analyze-lifted-ir
+  describe Analyze lifted LLVM IR with statistics (input=/path/to/file.ll)
+  shell_lang bash
+  shell test -n "${input}" || (echo "Error: input parameter required" && exit 1)
+  shell echo "Analyzing ${input}..."
+  shell opt-18 -stats -O3 ${input} -o /dev/null 2>&1 | grep -E "(statistics|NumInstructions|NumFunctions|NumBlocks)"
+end
+
+task recompile-lifted
+  describe Recompile lifted LLVM IR to executable (input=/path/to/file.ll)
+  shell_lang bash
+  shell test -n "${input}" || (echo "Error: input parameter required" && exit 1)
+  shell clang -O2 ${input} -o ${output:-${input%.ll}_recompiled}
+  shell echo "Successfully recompiled to: ${output:-${input%.ll}_recompiled}"
+  shell file ${output:-${input%.ll}_recompiled}
+  shell ls -lh ${output:-${input%.ll}_recompiled}
+end
+
+# ============================================================================
+# Testing Tasks
+# ============================================================================
+
+task test-lifting-workflow
+  describe Test complete lifting workflow with examples
+  shell echo "=== Testing Complete Lifting Workflow ==="
+  shell pf build-lifting-examples
+  shell pf lift-inspect binary=demos/binary-lifting/examples/bin/simple_math
+  shell pf lift-disassemble binary=demos/binary-lifting/examples/bin/simple_math
+  shell echo "Workflow test complete - check demos/binary-lifting/examples/output/"
+end
+
+# ============================================================================
+# Documentation Tasks
+# ============================================================================
+
+task lifting-help
+  describe Show help for LLVM lifting tasks
+  shell_lang bash
+  shell bash tools/lifting/quick-reference.sh
+end
