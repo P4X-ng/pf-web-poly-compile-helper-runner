@@ -1194,6 +1194,94 @@ echo "==> Build completed successfully with $BUILD_SYSTEM"
 """
         return run(autobuild_script)
 
+    if op == "sync":
+        # sync src=<path> dest=<path> [host=<host>] [user=<user>] [port=<port>]
+        #      [excludes=["pattern1","pattern2"]] [exclude_file=<path>]
+        #      [delete] [dry] [verbose]
+        # Supports both local and remote (SSH) sync using rsync
+        
+        pos, kv = _split_kv(args)
+        
+        # Required parameters
+        src = kv.get("src")
+        dest = kv.get("dest")
+        if not src or not dest:
+            raise ValueError("sync requires src=<path> and dest=<path>")
+        
+        # Optional parameters
+        host = kv.get("host")
+        user = kv.get("user")
+        port = kv.get("port")
+        
+        # Parse excludes array
+        excludes_raw = kv.get("excludes", "")
+        excludes = []
+        if excludes_raw:
+            # excludes comes as a string like "[*.log,*.tmp]"
+            if excludes_raw.startswith("[") and excludes_raw.endswith("]"):
+                # Remove brackets and split by comma
+                excludes_str = excludes_raw[1:-1]
+                if excludes_str:
+                    excludes = [p.strip() for p in excludes_str.split(",")]
+        
+        exclude_file = kv.get("exclude_file")
+        delete = "delete" in pos or kv.get("delete") == "true"
+        dry = "dry" in pos or kv.get("dry") == "true"
+        verbose = "verbose" in pos or kv.get("verbose") == "true"
+        
+        # Build rsync command parts
+        rsync_parts = ["rsync", "-az"]
+        
+        # Add verbose flag
+        if verbose:
+            rsync_parts.append("-v")
+        
+        # Add dry-run flag
+        if dry:
+            rsync_parts.append("--dry-run")
+        
+        # Add delete flag (mirror destination)
+        if delete:
+            rsync_parts.append("--delete")
+        
+        # Add excludes with proper quoting
+        for pattern in excludes:
+            rsync_parts.append("--exclude")
+            rsync_parts.append(shlex.quote(pattern))
+        
+        # Add exclude-from file
+        if exclude_file:
+            rsync_parts.append("--exclude-from")
+            rsync_parts.append(shlex.quote(exclude_file))
+        
+        # Build source and destination paths
+        # Source is always local
+        src_path = shlex.quote(src)
+        
+        # Destination can be remote (SSH) or local
+        if host:
+            # Remote sync via SSH
+            dest_spec = ""
+            if user:
+                dest_spec = f"{user}@"
+            dest_spec += host
+            if port:
+                # Add SSH port option
+                rsync_parts.append("-e")
+                rsync_parts.append(shlex.quote(f"ssh -p {port}"))
+            dest_spec += f":{dest}"
+            dest_path = shlex.quote(dest_spec)
+        else:
+            # Local sync
+            dest_path = shlex.quote(dest)
+        
+        # Complete command
+        rsync_parts.extend([src_path, dest_path])
+        
+        # Execute rsync
+        cmd = " ".join(rsync_parts)
+        return run(cmd)
+
     raise ValueError(f"Unknown verb: {op}")
 
 # ---------- Built-ins ----------
