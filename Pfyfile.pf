@@ -21,9 +21,9 @@ task web-build-rust-wasm
 end
 
 task web-build-rust-llvm
-  describe Build Rust to LLVM IR
+  describe Build Rust to LLVM IR with optimization (opt_level=3 by default, parallel=false)
   shell_lang bash
-  shell cd demos/pf-web-polyglot-demo-plus-c/rust && mkdir -p ../web/llvm/rust && rustc --emit=llvm-ir --crate-type=lib src/lib_simple.rs -o ../web/llvm/rust/lib.ll
+  shell cd demos/pf-web-polyglot-demo-plus-c/rust && mkdir -p ../web/llvm/rust && rustc --emit=llvm-ir --crate-type=lib -C opt-level=${opt_level:-3} src/lib_simple.rs -o ../web/llvm/rust/lib.ll
 end
 
 task web-build-c
@@ -44,9 +44,9 @@ task web-build-c-asm
 end
 
 task web-build-c-llvm
-  describe Build C to LLVM IR
+  describe Build C to LLVM IR with optimization (opt_level=3 by default, parallel=false for OpenMP)
   shell_lang bash
-  shell cd demos/pf-web-polyglot-demo-plus-c/c && mkdir -p .tmp && echo "#define EMSCRIPTEN_KEEPALIVE" > .tmp/emscripten.h && clang -S -emit-llvm -I.tmp c_trap.c -o ../web/llvm/c/c_trap.ll && rm -rf .tmp
+  shell cd demos/pf-web-polyglot-demo-plus-c/c && mkdir -p .tmp && echo "#define EMSCRIPTEN_KEEPALIVE" > .tmp/emscripten.h && clang -S -emit-llvm -O${opt_level:-3} ${parallel:+-fopenmp} -I.tmp c_trap.c -o ../web/llvm/c/c_trap.ll && rm -rf .tmp
 end
 
 task web-build-fortran
@@ -61,9 +61,9 @@ task web-build-fortran-wasm
 end
 
 task web-build-fortran-llvm
-  describe Build Fortran to LLVM IR
+  describe Build Fortran to LLVM IR with optimization (opt_level=3 by default, parallel=false for OpenMP)
   shell_lang bash
-  shell cd demos/pf-web-polyglot-demo-plus-c/fortran && lfortran src/hello.f90 --show-llvm -o ../web/llvm/fortran/hello.ll
+  shell cd demos/pf-web-polyglot-demo-plus-c/fortran && lfortran src/hello.f90 --show-llvm -O${opt_level:-3} ${parallel:+-fopenmp} -o ../web/llvm/fortran/hello.ll
 end
 
 task web-build-wat
@@ -98,10 +98,16 @@ task web-build-all-asm
 end
 
 task web-build-all-llvm
-  describe Build all languages to LLVM IR where supported
-  shell pf web-build-rust-llvm
-  shell pf web-build-c-llvm
-  shell pf web-build-fortran-llvm
+  describe Build all languages to LLVM IR where supported (with O3 by default, use opt_level= and parallel=true as needed)
+  shell pf web-build-rust-llvm opt_level=${opt_level:-3}
+  shell pf web-build-c-llvm opt_level=${opt_level:-3} parallel=${parallel:-false}
+  shell pf web-build-fortran-llvm opt_level=${opt_level:-3} parallel=${parallel:-false}
+end
+
+task web-build-c-llvm-opt
+  describe Build C to LLVM IR with custom optimization passes (passes="pass1,pass2,..." uses new pass manager)
+  shell_lang bash
+  shell cd demos/pf-web-polyglot-demo-plus-c/c && mkdir -p .tmp ../web/llvm/c && echo "#define EMSCRIPTEN_KEEPALIVE" > .tmp/emscripten.h && clang -S -emit-llvm -O${opt_level:-3} ${parallel:+-fopenmp} -I.tmp c_trap.c -o .tmp/c_trap_unopt.ll && opt-18 -S -passes="${passes:-mem2reg,instcombine,simplifycfg,loop-vectorize}" .tmp/c_trap_unopt.ll -o ../web/llvm/c/c_trap.ll && rm -rf .tmp
 end
 
 task install-base

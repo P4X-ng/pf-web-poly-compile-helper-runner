@@ -234,24 +234,37 @@ pf web-build-all-wasm
 # Build all to asm.js (where supported)
 pf web-build-all-asm
 
-# Build all to LLVM IR (where supported)
+# Build all to LLVM IR (where supported, with O3 optimization by default)
 pf web-build-all-llvm
+
+# Build with custom optimization level (0, 1, 2, 3, s, or z)
+pf web-build-all-llvm opt_level=2
+
+# Build with parallelization support (OpenMP)
+pf web-build-c-llvm parallel=true
+pf web-build-fortran-llvm parallel=true opt_level=3
 ```
 
 Individual language compilation targets:
 ```bash
 # Rust
 pf web-build-rust-wasm  # Rust → WASM
-pf web-build-rust-llvm  # Rust → LLVM IR
+pf web-build-rust-llvm  # Rust → LLVM IR (with O3 optimization by default)
+pf web-build-rust-llvm opt_level=2  # Rust → LLVM IR with O2
 
 # C
 pf web-build-c-wasm     # C → WASM
 pf web-build-c-asm      # C → asm.js
-pf web-build-c-llvm     # C → LLVM IR
+pf web-build-c-llvm     # C → LLVM IR (with O3 optimization by default)
+pf web-build-c-llvm opt_level=s  # C → LLVM IR optimized for size
+pf web-build-c-llvm parallel=true  # C → LLVM IR with OpenMP support
+pf web-build-c-llvm-opt  # C → LLVM IR with custom optimization passes
+pf web-build-c-llvm-opt passes="mem2reg,dce,gvn"  # Custom passes
 
 # Fortran
 pf web-build-fortran-wasm  # Fortran → WASM
-pf web-build-fortran-llvm  # Fortran → LLVM IR
+pf web-build-fortran-llvm  # Fortran → LLVM IR (with O3 optimization by default)
+pf web-build-fortran-llvm parallel=true  # Fortran → LLVM IR with OpenMP
 
 # WebAssembly Text
 pf web-build-wat-wasm   # WAT → WASM
@@ -624,15 +637,20 @@ Additional documentation in `pf-runner/`:
 | `pf web-build-all` | Build all WASM modules (Rust, C, Fortran, WAT) |
 | `pf web-build-all-wasm` | Build all languages to WebAssembly |
 | `pf web-build-all-asm` | Build all languages to asm.js (where supported) |
-| `pf web-build-all-llvm` | Build all languages to LLVM IR (where supported) |
+| `pf web-build-all-llvm` | Build all languages to LLVM IR (O3 optimization by default) |
+| `pf web-build-all-llvm opt_level=2` | Build with custom optimization level (0-3, s, z) |
 | `pf web-build-rust` | Build Rust → WASM |
-| `pf web-build-rust-llvm` | Build Rust → LLVM IR |
+| `pf web-build-rust-llvm` | Build Rust → LLVM IR (O3 by default) |
+| `pf web-build-rust-llvm opt_level=2` | Build Rust → LLVM IR with O2 optimization |
 | `pf web-build-c` | Build C → WASM |
 | `pf web-build-c-asm` | Build C → asm.js |
-| `pf web-build-c-llvm` | Build C → LLVM IR |
+| `pf web-build-c-llvm` | Build C → LLVM IR (O3 by default) |
+| `pf web-build-c-llvm parallel=true` | Build C → LLVM IR with OpenMP parallelization |
+| `pf web-build-c-llvm-opt` | Build C → LLVM IR with custom optimization passes |
 | `pf web-build-wat` | Assemble WAT → WASM |
 | `pf web-build-fortran` | Build Fortran → WASM |
-| `pf web-build-fortran-llvm` | Build Fortran → LLVM IR |
+| `pf web-build-fortran-llvm` | Build Fortran → LLVM IR (O3 by default) |
+| `pf web-build-fortran-llvm parallel=true` | Build Fortran → LLVM IR with OpenMP |
 | `pf install-base` | Install base pf runner and dependencies |
 | `pf install-web` | Install web/WASM development tools |
 | `pf install` | Install everything (base + web) |
