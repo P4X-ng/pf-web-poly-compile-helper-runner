@@ -35,3 +35,51 @@ task test-shells
   shell [lang:julia] println("julia ok")
   shell [lang:lua]  print("lua ok")
 end
+
+task test-sync-local
+  describe Test local sync functionality with rsync
+  shell mkdir -p /tmp/pf_sync_test_src /tmp/pf_sync_test_dest
+  shell echo "test file 1" > /tmp/pf_sync_test_src/file1.txt
+  shell echo "test file 2" > /tmp/pf_sync_test_src/file2.txt
+  shell mkdir -p /tmp/pf_sync_test_src/subdir
+  shell echo "test file 3" > /tmp/pf_sync_test_src/subdir/file3.txt
+  sync src="/tmp/pf_sync_test_src/" dest="/tmp/pf_sync_test_dest/" verbose
+  shell test -f /tmp/pf_sync_test_dest/file1.txt && echo "✓ file1.txt synced"
+  shell test -f /tmp/pf_sync_test_dest/file2.txt && echo "✓ file2.txt synced"
+  shell test -f /tmp/pf_sync_test_dest/subdir/file3.txt && echo "✓ subdir/file3.txt synced"
+  shell rm -rf /tmp/pf_sync_test_src /tmp/pf_sync_test_dest
+  shell echo "Local sync test passed!"
+end
+
+task test-sync-excludes
+  describe Test sync with exclude patterns
+  shell mkdir -p /tmp/pf_sync_excl_src /tmp/pf_sync_excl_dest
+  shell echo "include me" > /tmp/pf_sync_excl_src/include.txt
+  shell echo "exclude me" > /tmp/pf_sync_excl_src/exclude.log
+  shell echo "exclude me too" > /tmp/pf_sync_excl_src/temp.tmp
+  sync src="/tmp/pf_sync_excl_src/" dest="/tmp/pf_sync_excl_dest/" excludes=["*.log","*.tmp"] verbose
+  shell test -f /tmp/pf_sync_excl_dest/include.txt && echo "✓ include.txt synced"
+  shell test ! -f /tmp/pf_sync_excl_dest/exclude.log && echo "✓ exclude.log excluded"
+  shell test ! -f /tmp/pf_sync_excl_dest/temp.tmp && echo "✓ temp.tmp excluded"
+  shell rm -rf /tmp/pf_sync_excl_src /tmp/pf_sync_excl_dest
+  shell echo "Exclude patterns test passed!"
+end
+
+task test-sync-dry
+  describe Test sync dry-run mode
+  shell mkdir -p /tmp/pf_sync_dry_src /tmp/pf_sync_dry_dest
+  shell echo "dry run test" > /tmp/pf_sync_dry_src/test.txt
+  sync src="/tmp/pf_sync_dry_src/" dest="/tmp/pf_sync_dry_dest/" dry verbose
+  shell test ! -f /tmp/pf_sync_dry_dest/test.txt && echo "✓ Dry run did not copy files"
+  shell rm -rf /tmp/pf_sync_dry_src /tmp/pf_sync_dry_dest
+  shell echo "Dry run test passed!"
+end
+
+task test-sync-all
+  describe Run all sync tests
+  shell echo "Running sync tests..."
+  shell ./pf test-sync-local
+  shell ./pf test-sync-excludes
+  shell ./pf test-sync-dry
+  shell echo "All sync tests passed!"
+end
