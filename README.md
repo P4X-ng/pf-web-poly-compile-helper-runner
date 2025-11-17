@@ -72,7 +72,7 @@ pf build_detect
 ### LLVM Binary Lifting 🔬
 Convert compiled binaries back to LLVM IR for analysis, optimization, and transformation:
 - **RetDec**: Automatic binary-to-LLVM lifting for multiple architectures (x86, ARM, MIPS)
-- **McSema**: High-fidelity lifting using Remill (requires IDA Pro for CFG recovery)
+- **McSema**: High-fidelity lifting using Remill (uses Ghidra/radare2/angr for CFG recovery)
 - **LLVM Tools**: Built-in utilities for bitcode extraction and disassembly
 - **Cross-Architecture**: Retarget binaries to different platforms via LLVM IR
 - **Optimization**: Apply LLVM optimization passes to legacy/closed-source code

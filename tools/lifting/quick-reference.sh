@@ -25,7 +25,7 @@ LIFT BINARIES (RetDec - Easiest)
 
 LIFT BINARIES (McSema - Most Accurate)
 ────────────────────────────────────────────────────────────────
-  # Requires IDA Pro for CFG generation
+  # Requires CFG extraction with Ghidra/radare2/angr
   pf lift-binary-mcsema binary=./myprogram cfg=./myprogram.cfg
 
 INSPECT & ANALYZE
@@ -93,8 +93,8 @@ COMMON ISSUES
   Q: Lifted IR won't compile
   A: Some manual fixes may be needed. Check for type mismatches or missing declarations.
 
-  Q: Need IDA Pro for McSema
-  A: IDA Pro is commercial. Use RetDec as open-source alternative.
+  Q: How do I extract CFG for McSema?
+  A: Use Ghidra (GUI), radare2 (CLI), or angr (Python) - all free and open-source.
 
 DOCUMENTATION
 ────────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ DOCUMENTATION
 TOOL COMPARISON
 ────────────────────────────────────────────────────────────────
   RetDec:  ⭐⭐⭐⭐   Open source, automatic, multi-arch
-  McSema:  ⭐⭐⭐⭐⭐ Most accurate, needs IDA Pro
+  McSema:  ⭐⭐⭐⭐⭐ Most accurate, uses Ghidra/radare2/angr
   LLVM:    ⭐⭐⭐     Basic tools, bitcode only
 
 SUPPORTED ARCHITECTURES

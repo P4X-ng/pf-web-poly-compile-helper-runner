@@ -27,7 +27,7 @@ LLVM lifting (also known as binary lifting or binary translation) is the process
 **Reliability**: ⭐⭐⭐⭐⭐ Very High
 - Most accurate binary lifting available
 - Uses Remill library for instruction semantics
-- Requires IDA Pro for CFG recovery (commercial)
+- Uses Ghidra/radare2/angr for CFG recovery (all free and open-source)
 - Supports x86, x86_64, AArch64, SPARC
 - Best for security research and critical applications
 

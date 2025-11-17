@@ -43,14 +43,15 @@ pf lift-examples-simple
 pf lift-inspect binary=./examples/bin/simple_math
 ```
 
-#### Using McSema (Most Accurate - Requires IDA Pro)
+#### Using McSema (Most Accurate - Requires CFG Extraction)
 
 ```bash
-# Install McSema and IDA Pro
+# Install McSema
 pf install-mcsema
 
-# Lift with McSema (two-step process)
-pf lift-binary-mcsema binary=./examples/bin/simple_math
+# Extract CFG using Ghidra, radare2, or angr (see CFG Tools section)
+# Then lift with McSema (two-step process)
+pf lift-binary-mcsema binary=./examples/bin/simple_math cfg=./simple_math.cfg
 ```
 
 ### 3. Analyze and Optimize Lifted IR
@@ -107,8 +108,8 @@ Binary → RetDec → LLVM IR (+ optional C code)
 
 ### McSema Workflow (High Accuracy)
 ```
-Binary → IDA Pro → CFG → McSema + Remill → LLVM IR
-       (CFG recovery)       (lifting)
+Binary → Ghidra/radare2/angr → CFG → McSema + Remill → LLVM IR
+       (CFG recovery)                (lifting)
 ```
 
 **Advantages:**
@@ -116,6 +117,7 @@ Binary → IDA Pro → CFG → McSema + Remill → LLVM IR
 - Better control flow recovery
 - Executable bitcode
 - Security research features
+- Uses free, open-source CFG tools
 
 **Best for:** Critical applications, security analysis, when accuracy matters most
 
@@ -210,11 +212,32 @@ Some lifted IR may need manual fixes:
 clang -S output/problematic.ll
 ```
 
-### IDA Pro License for McSema
-McSema requires IDA Pro (commercial). Alternatives:
-- Use RetDec (open source, automatic)
-- Try Ghidra plugins (experimental)
-- Use Binary Ninja with lifting plugins
+### CFG Extraction for McSema
+
+McSema requires a Control Flow Graph (CFG). Here are free, open-source tools:
+
+**Ghidra (Recommended):**
+```bash
+# Download from https://ghidra-sre.org/
+# Load binary, auto-analyze, export CFG using scripts
+```
+
+**radare2:**
+```bash
+# Install: sudo apt-get install radare2
+r2 -A your_binary
+[0x00000000]> agfd > cfg.dot  # Export CFG to Graphviz
+```
+
+**angr (Python):**
+```python
+import angr
+proj = angr.Project('your_binary')
+cfg = proj.analyses.CFGFast()
+# Convert to McSema format
+```
+
+**Alternative:** Use RetDec for fully automatic lifting without CFG extraction.
 
 ## Advanced Use Cases
 

@@ -105,8 +105,8 @@ Binary Input → RetDec Frontend → LLVM IR Generation
 ### McSema Pipeline
 
 ```
-Binary Input → IDA Pro → CFG → McSema + Remill → LLVM IR + Bitcode
-               (manual)  (cfg)  (lifting)         (.ll + .bc)
+Binary Input → Ghidra/radare2/angr → CFG → McSema + Remill → LLVM IR + Bitcode
+               (CFG extraction)              (lifting)         (.ll + .bc)
 ```
 
 **Advantages:**
