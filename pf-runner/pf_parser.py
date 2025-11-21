@@ -446,7 +446,7 @@ def _read_text_file(path: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-def _expand_includes_from_text(text: str, base_dir: str, visited: set[str]) -> Tuple[str, Dict[str, str]]:
+def _expand_includes_from_text(text: str, base_dir: str, visited: set[str], current_file: Optional[str] = None) -> Tuple[str, Dict[str, str]]:
     """Expand includes and track which file each task came from.
     Returns: (expanded_text, task_name_to_source_file_map)
     """
@@ -454,7 +454,6 @@ def _expand_includes_from_text(text: str, base_dir: str, visited: set[str]) -> T
     task_sources: Dict[str, str] = {}
     inside_task = False
     current_task_name = None
-    current_source = None
     
     for raw in text.splitlines():
         line = raw.rstrip("\n")
@@ -463,9 +462,9 @@ def _expand_includes_from_text(text: str, base_dir: str, visited: set[str]) -> T
             inside_task = True
             task_name = stripped.split(None, 1)[1].strip() if len(stripped.split()) > 1 else ""
             current_task_name = task_name
-            # Track the source file for this task
-            if current_source:
-                task_sources[task_name] = current_source
+            # Track the source file for this task (use current_file if in an include)
+            if current_file:
+                task_sources[task_name] = current_file
             out_lines.append(line); continue
         if stripped == "end":
             inside_task = False
@@ -488,11 +487,8 @@ def _expand_includes_from_text(text: str, base_dir: str, visited: set[str]) -> T
                 visited.add(inc_full)
                 inc_text = _read_text_file(inc_full)
                 
-                # Save old source, set new source for included file
-                old_source = current_source
-                current_source = inc_full
-                inc_expanded, inc_sources = _expand_includes_from_text(inc_text, os.path.dirname(inc_full), visited)
-                current_source = old_source
+                # Process included file with its path as current_file
+                inc_expanded, inc_sources = _expand_includes_from_text(inc_text, os.path.dirname(inc_full), visited, inc_full)
                 
                 # Merge task sources
                 task_sources.update(inc_sources)
@@ -1314,20 +1310,60 @@ BUILTINS: Dict[str, List[str]] = {
 
 # ---------- CLI ----------
 def _print_list(file_arg: Optional[str] = None):
+    """Print available tasks grouped by source"""
     print("Built-ins:")
     print("  " + "  ".join(BUILTINS.keys()))
-    dsl = list_dsl_tasks_with_desc(file_arg=file_arg)
-    if dsl:
+    
+    # Load tasks with source tracking
+    src_text, task_sources = _load_pfy_source_with_includes(file_arg=file_arg)
+    tasks = parse_pfyfile_text(src_text, task_sources)
+    
+    if tasks:
         resolved = _find_pfyfile(file_arg=file_arg)
         source = resolved if os.path.exists(resolved) else "embedded PFY_EMBED"
-        print(f"From {source}:")
-        for name, desc in dsl:
-            if desc:
-                print(f"  {name}  —  {desc}")
+        
+        # Group tasks by their source file
+        from collections import defaultdict
+        tasks_by_source = defaultdict(list)
+        main_tasks = []
+        
+        for task in tasks.values():
+            if task.source_file:
+                tasks_by_source[task.source_file].append(task)
             else:
-                print(f"  {name}")
+                main_tasks.append(task)
+        
+        # Print main tasks first
+        if main_tasks:
+            print(f"\nFrom {source}:")
+            for task in main_tasks:
+                if task.description:
+                    print(f"  {task.name}  —  {task.description}")
+                else:
+                    print(f"  {task.name}")
+        
+        # Print tasks grouped by include file
+        for source_file in sorted(tasks_by_source.keys()):
+            # Generate subcommand name from filename
+            basename = os.path.basename(source_file)
+            # Remove Pfyfile. prefix and .pf suffix
+            subcommand_name = basename
+            if subcommand_name.startswith("Pfyfile."):
+                subcommand_name = subcommand_name[8:]  # Remove "Pfyfile."
+            if subcommand_name.endswith(".pf"):
+                subcommand_name = subcommand_name[:-3]  # Remove ".pf"
+            # Convert underscores to hyphens
+            subcommand_name = subcommand_name.replace("_", "-")
+            
+            print(f"\n[{subcommand_name}] From {source_file}:")
+            for task in sorted(tasks_by_source[source_file], key=lambda t: t.name):
+                if task.description:
+                    print(f"  {task.name}  —  {task.description}")
+                else:
+                    print(f"  {task.name}")
+    
     if ENV_MAP:
-        print("Environments:")
+        print("\nEnvironments:")
         for k, v in ENV_MAP.items():
             vs = _normalize_hosts(v)
             print(f"  {k}: {', '.join(vs) if vs else '(empty)'}")
