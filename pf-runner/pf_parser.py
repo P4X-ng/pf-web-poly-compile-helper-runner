@@ -596,15 +596,10 @@ def _exec_line_fabric(c: Optional[Connection], line: str, sudo: bool, sudo_user:
     stripped = line.strip()
     if not stripped: return 0
     
-    # Split only to get the verb, use simple split for this
-    first_space = stripped.find(' ')
-    if first_space == -1:
-        # Single word line (e.g., just "describe")
-        verb = stripped
-        rest_of_line = ""
-    else:
-        verb = stripped[:first_space]
-        rest_of_line = stripped[first_space+1:].lstrip()
+    # Split at most once to get the verb and the rest
+    parts_split = stripped.split(maxsplit=1)
+    verb = parts_split[0]
+    rest_of_line = parts_split[1] if len(parts_split) > 1 else ""
     
     def run(cmd: str):
         # Build environment for this command
@@ -640,7 +635,7 @@ def _exec_line_fabric(c: Optional[Connection], line: str, sudo: bool, sudo_user:
         if not rest_of_line: raise ValueError("shell needs a command")
         return run(rest_of_line)
     
-    # For other commands, parse with shlex as before
+    # For other commands, parse with shlex to handle quoted arguments
     parts = shlex.split(line)
     if not parts: return 0
     op = parts[0]; args = parts[1:]
