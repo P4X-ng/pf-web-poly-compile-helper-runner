@@ -1,432 +1,661 @@
-# Advanced Kernel Debugging Guide
+# Advanced Kernel-Mode Debugging Guide
 
-This guide covers the advanced kernel-mode debugging capabilities added to the pf-runner system, including IOCTL detection, firmware analysis, automated breakpoints, vulnerability scanning, and mass fuzzing.
+This guide covers advanced low-level debugging features for kernel drivers, firmware analysis, and system-level code, with integration for LLDB, radare2, and Ghidra.
 
 ## Overview
 
-The kernel debugging system provides comprehensive tools for:
+The debugging framework provides comprehensive tools for:
 
-- **IOCTL Detection & Analysis**: Identify and analyze IOCTL handlers in kernel modules
-- **Firmware Extraction**: Extract and analyze firmware from devices using flashrom
-- **Advanced Debugging**: LLDB integration with complex conditional breakpoints
-- **Vulnerability Detection**: Automated identification of common kernel vulnerabilities
-- **High-Performance Fuzzing**: Fast kernel interface fuzzing with parallel execution
-- **Mass Fuzzing**: MicroVM swarms for scalable security testing
-- **Plugin Integration**: Radare2 and Binary Ninja plugins for enhanced analysis
+- **IOCTL Discovery & Fuzzing**: Discover and test kernel driver IOCTLs
+- **Firmware Analysis**: Extract, analyze, and flash firmware images
+- **Reversing Automation**: Automated debugging with LLDB, radare2, and Ghidra
+- **Vulnerability Detection**: Heuristic-based security analysis
+- **Fast Fuzzing**: High-speed fuzzing with crash detection
+- **MicroVM Swarms**: Parallel fuzzing with VMKit integration
+- **Plugin Development**: Create radare2 and Binary Ninja plugins
 
 ## Quick Start
 
-### 1. Setup Environment
+### Installation
+
+Install all debugging tools:
 
 ```bash
-# Install all kernel debugging dependencies
-pf kernel-debug-setup
-
-# Test installation
-pf kernel-debug-test
+pf install-debug-tools
 ```
 
-### 2. Basic IOCTL Analysis
+Or install components individually:
 
 ```bash
-# Analyze source code for IOCTLs
-pf kernel-ioctl-analyze-source source_dir=/path/to/kernel/module
-
-# Analyze binary for IOCTL patterns
-pf kernel-ioctl-analyze-binary binary=/path/to/driver.ko
-
-# Detect IOCTLs in running system
-pf kernel-ioctl-detect target=/dev/input/event0
+pf install-radare2        # radare2 + r2pipe
+pf install-lldb           # LLDB debugger
+pf install-ghidra         # Ghidra helper scripts
+pf install-firmware-tools # binwalk, flashrom
+pf install-fuzzing-tools  # Syzkaller, AFL++
 ```
 
-### 3. Firmware Analysis
+### Basic Usage
+
+Run a complete debugging workflow:
 
 ```bash
-# List supported devices
-pf kernel-firmware-list-devices
-
-# Extract firmware
-pf kernel-firmware-extract device=MX25L6405D output=firmware.bin
-
-# Analyze extracted firmware
-pf kernel-firmware-analyze firmware=firmware.bin
+pf debug-workflow-full binary=/path/to/binary
 ```
 
-### 4. Advanced Debugging
+Or use individual tools:
 
 ```bash
-# Start interactive LLDB session with vulnerability breakpoints
-pf kernel-debug-lldb-session target=/path/to/binary
+# Discover IOCTLs in a driver
+pf ioctl-discover binary=/path/to/driver.ko
 
-# Analyze crash dump
-pf kernel-debug-crash-analyze core_dump=core.dump executable=/path/to/binary
+# Analyze firmware
+pf firmware-analyze image=/path/to/firmware.bin
 
-# Set up IOCTL tracing
-pf kernel-debug-ioctl-trace target=/path/to/binary
+# Automated reversing with radare2
+pf reverse-radare2 binary=/path/to/binary
+
+# Fast fuzzing
+pf fuzz-basic binary=/path/to/binary iterations=10000
 ```
 
-### 5. Kernel Fuzzing
+## IOCTL Discovery and Analysis
+
+### Discovering IOCTLs
+
+The IOCTL discovery tool analyzes kernel drivers to find IOCTL command codes:
+
+```bash
+pf ioctl-discover binary=/path/to/driver.ko
+```
+
+This tool:
+- Extracts strings containing IOCTL patterns
+- Disassembles the binary to find IOCTL handlers
+- Uses radare2 for deep analysis (if available)
+- Exports results as JSON
+
+**Output**: `output/driver_ioctls.json`
+
+### Analyzing IOCTL Structure
+
+Analyze IOCTL handlers to understand parameter structures:
+
+```bash
+pf ioctl-analyze binary=/path/to/driver.ko
+```
+
+This identifies:
+- Potential structure sizes
+- Input validation checks
+- IOCTL implementation patterns (switch, if-else, function tables)
+
+### Fuzzing IOCTLs
+
+Fuzz discovered IOCTLs to find vulnerabilities:
 
 ```bash
 # Basic fuzzing
-pf kernel-fuzz-basic target=/dev/input/event0 duration=300
+pf ioctl-fuzz driver=/dev/mydriver iterations=10000
 
-# Parallel fuzzing
-pf kernel-fuzz-parallel target=/dev/null processes=8 duration=600
-
-# Mass fuzzing with VM swarm
-pf kernel-swarm-fuzz vms=16 target=/dev/input/event0 duration=1800
+# With discovered IOCTL list
+pf ioctl-discover binary=/path/to/driver.ko
+pf ioctl-fuzz driver=/dev/mydriver ioctl_list=./output/driver_ioctls.json
 ```
 
-## Detailed Usage
+**Note**: IOCTL fuzzing requires the driver to be loaded and accessible via `/dev/`.
 
-### IOCTL Detection and Analysis
+## Firmware Analysis
 
-The IOCTL detection system can analyze both source code and compiled binaries to identify IOCTL handlers and potential vulnerabilities.
+### Extracting Firmware
 
-#### Source Code Analysis
+Extract firmware filesystem and components:
 
 ```bash
-# Analyze entire kernel module directory
-pf kernel-ioctl-analyze-source source_dir=/usr/src/linux/drivers/input
-
-# Generate detailed report
-pf kernel-ioctl-analyze-source source_dir=./driver format=text output=ioctl_report.txt
+pf firmware-extract image=/path/to/firmware.bin
 ```
 
-The analyzer detects:
-- IOCTL command definitions (`_IO`, `_IOR`, `_IOW`, `_IOWR` macros)
-- Handler functions and switch statements
-- Vulnerability patterns (buffer overflows, unchecked copies, etc.)
-- Privilege escalation opportunities
+Uses binwalk to:
+- Identify filesystem types
+- Extract embedded files
+- Decompress compressed sections
 
-#### Binary Analysis
+### Analyzing Firmware Security
+
+Scan firmware for vulnerabilities:
 
 ```bash
-# Analyze kernel module binary
-pf kernel-ioctl-analyze-binary binary=driver.ko format=json output=binary_analysis.json
-
-# Analyze with radare2 integration
-pf kernel-analyze-r2-ioctls binary=driver.ko output=r2_analysis.json
+pf firmware-analyze image=/path/to/firmware.bin
 ```
 
-### Firmware Extraction and Analysis
+This detects:
+- Hardcoded credentials
+- Debug interfaces (UART, JTAG)
+- Cleartext secrets
+- High/low entropy sections
+- Interesting strings
 
-The firmware extraction system integrates with flashrom and other tools for comprehensive firmware analysis.
+### Flashing Firmware
 
-#### Device Detection
+**Warning**: Flashing firmware can brick devices. Always verify compatibility.
+
+Read firmware from device:
 
 ```bash
-# List all supported flash chips
-pf kernel-firmware-list-devices format=json
-
-# Extract from specific device
-pf kernel-firmware-extract device=W25Q64FV programmer=ch341a_spi output=router_firmware.bin
+pf firmware-read chip=MX25L3205D output=backup.bin
 ```
 
-#### Firmware Analysis
+Flash firmware to device:
 
 ```bash
-# Complete analysis pipeline
-pf kernel-firmware-pipeline device=MX25L6405D
-
-# Analyze existing firmware file
-pf kernel-firmware-analyze firmware=firmware.bin format=json output=analysis.json
+pf firmware-flash chip=MX25L3205D file=modified.bin verify=true
 ```
 
-The analyzer provides:
-- File type identification
-- Entropy analysis (encryption/compression detection)
-- Binwalk extraction and analysis
-- String analysis for credentials and configuration
-- Filesystem extraction where possible
+Supported programmers:
+- `internal` - Internal hardware programmer
+- `ft2232_spi` - FTDI-based SPI programmer
+- `ch341a_spi` - CH341A USB programmer
 
-### Advanced LLDB Integration
+See `flashrom -p help` for full list.
 
-The LLDB integration provides sophisticated debugging capabilities with automatic breakpoint placement and vulnerability detection.
+## Reversing Automation
 
-#### Vulnerability Breakpoints
+### LLDB Automation
+
+Automated debugging sessions with LLDB:
 
 ```bash
-# Set breakpoints for buffer overflow detection
-pf kernel-debug-vuln-breakpoints target=./vulnerable_driver types=buffer_overflow
+# Basic analysis
+pf reverse-lldb binary=/path/to/binary
 
-# Monitor use-after-free vulnerabilities
-pf kernel-debug-vuln-breakpoints target=./driver types=use_after_free
+# With custom script
+pf reverse-lldb binary=/path/to/binary script=/path/to/script.lldb
 
-# Comprehensive vulnerability monitoring
-pf kernel-debug-vuln-breakpoints target=./driver types="buffer_overflow use_after_free privilege_escalation"
+# With function breakpoints
+LLDB_FUNCTIONS="malloc,free,strcpy" pf reverse-lldb binary=/path/to/binary
+
+# With conditional breakpoints
+LLDB_CONDITIONS="malloc:size>1024;strcpy:dst==0" pf reverse-lldb binary=/path/to/binary
 ```
 
-#### IOCTL Tracing
+The automation:
+- Sets breakpoints on common functions (malloc, strcpy, etc.)
+- Adds system call breakpoints
+- Prints registers and stack on breakpoint hits
+- Generates backtrace on crashes
+
+### Radare2 Automation
+
+Automated analysis with radare2 and r2pipe:
 
 ```bash
-# Trace all IOCTL calls
-pf kernel-debug-ioctl-trace target=./driver output=ioctl_trace.json
+# Basic analysis
+pf reverse-radare2 binary=/path/to/binary
 
-# Interactive IOCTL debugging
-pf kernel-debug-lldb-session target=./driver --ioctl-analysis
+# With custom commands
+echo "aaa" > commands.txt
+echo "pdf @ main" >> commands.txt
+pf reverse-radare2 binary=/path/to/binary commands=commands.txt
 ```
 
-#### Crash Analysis
+The automation:
+- Performs auto-analysis (aaa)
+- Lists functions, imports, exports
+- Extracts strings
+- Identifies dangerous functions
+- Generates control flow graphs
+
+### Ghidra Headless Analysis
+
+Run Ghidra analysis in headless mode:
 
 ```bash
-# Analyze kernel crash dump
-pf kernel-debug-crash-analyze core_dump=vmcore executable=vmlinux output=crash_report.json
-
-# Automated crash pattern detection
-pf kernel-debug-crash-analyze core_dump=core.dump --pattern-detection
+pf reverse-ghidra binary=/path/to/binary script=/path/to/script.py
 ```
 
-### High-Performance Fuzzing
+### Automatic Breakpoint Generation
 
-The fuzzing system provides fast, parallel kernel interface testing with crash detection and analysis.
-
-#### Basic Fuzzing
+Generate breakpoints with complex conditionals:
 
 ```bash
-# Fuzz device interface
-pf kernel-fuzz-basic target=/dev/input/event0 duration=600 output=fuzz_results.json
+# Auto-generate for specific functions
+pf reverse-auto-breakpoints binary=/path/to/binary functions="malloc,free,strcpy"
 
-# Fuzz with seed file
-pf kernel-fuzz-ioctl device=/dev/custom_device seed_file=seed_inputs.bin duration=300
+# With conditions
+pf reverse-auto-breakpoints binary=/path/to/binary \
+    functions="malloc" \
+    conditions="size>1024"
 ```
 
-#### Parallel Fuzzing
+### Control Flow Analysis
+
+Extract and visualize control flow graphs:
 
 ```bash
-# Multi-process fuzzing
-pf kernel-fuzz-parallel target=/dev/null processes=16 duration=1800 output=parallel_results.json
-
-# Distributed fuzzing across multiple hosts
-pf hosts=host1,host2,host3 kernel-fuzz-parallel target=/dev/target processes=8
+pf reverse-control-flow binary=/path/to/binary
 ```
 
-### MicroVM Swarm Fuzzing
+Outputs:
+- Graphviz DOT files
+- Function call graphs
+- Basic block graphs
 
-For large-scale security testing, the system supports orchestrating multiple lightweight VMs for parallel fuzzing.
+Convert to image:
+```bash
+dot -Tpng output.dot -o cfg.png
+```
 
-#### Swarm Setup
+## Vulnerability Detection
+
+### Quick Vulnerability Scan
+
+Scan for common vulnerability patterns:
 
 ```bash
-# Create VM swarm
-pf kernel-swarm-create vms=8 memory=512 kernel=/boot/vmlinuz rootfs=/path/to/rootfs.img
-
-# Scale existing swarm
-pf kernel-swarm-create vms=32 memory=256
+pf vuln-scan binary=/path/to/binary
 ```
 
-#### Mass Fuzzing
+Detects:
+- Buffer overflow vulnerabilities
+- Format string bugs
+- Integer overflows
+- Use-after-free patterns
+- Dangerous function usage
+
+### Heuristic Analysis
+
+Advanced heuristic-based weakness detection:
 
 ```bash
-# Large-scale fuzzing campaign
-pf kernel-swarm-fuzz vms=64 target=/dev/input/event0 duration=7200 jobs=256 output=mass_fuzz_results.json
-
-# Targeted IOCTL fuzzing
-pf kernel-swarm-fuzz vms=16 target=/dev/custom_device jobs=64 duration=3600
+pf vuln-heuristic binary=/path/to/binary
 ```
 
-### Plugin Integration
+Uses multiple heuristics:
+- Control flow complexity analysis
+- Data flow tracking
+- Memory safety checks
+- API misuse detection
 
-#### Radare2 Analysis
+### Kernel Module Security Check
+
+Specialized checks for kernel modules:
 
 ```bash
-# Comprehensive binary analysis
-pf kernel-analyze-r2-ioctls binary=driver.ko output=r2_ioctl_analysis.json
-
-# Find dangerous function calls
-pf kernel-analyze-r2-dangerous binary=driver.ko output=dangerous_functions.json
-
-# Generate control flow graph
-pf kernel-analyze-r2-cfg binary=driver.ko function=ioctl_handler output=cfg.json
+pf vuln-kernel-check module=/path/to/module.ko
 ```
 
-#### Binary Ninja Integration
+Checks for:
+- Missing capability checks
+- Unsafe kernel API usage
+- Race conditions
+- Information leaks
 
-The system includes Binary Ninja plugin support for automated vulnerability detection and analysis workflows.
+## Fuzzing Infrastructure
 
-## Comprehensive Workflows
+### Basic Fast Fuzzer
 
-### Complete Security Analysis
+High-speed fuzzing with crash detection:
 
 ```bash
-# Full kernel module security analysis
-pf kernel-full-analysis binary=./driver.ko source_dir=./src target=/dev/driver0
-
-# Automated vulnerability scanning
-pf kernel-vulnerability-scan binary=./driver.ko target=/dev/driver0
+pf fuzz-basic binary=/path/to/binary iterations=10000
 ```
 
-### Firmware Security Pipeline
+Features:
+- Multiple input generation strategies
+- Crash and hang detection
+- Progress reporting
+- Execution statistics
+
+### Kernel Fuzzing with Syzkaller
+
+Syzkaller is a coverage-guided kernel fuzzer:
 
 ```bash
-# Complete firmware security analysis
-pf kernel-firmware-pipeline device=W25Q64FV
+# Setup (one-time)
+pf install-fuzzing-tools
+
+# Create config
+cat > syzkaller.cfg << EOF
+{
+  "target": "linux/amd64",
+  "http": "127.0.0.1:56741",
+  "workdir": "./workdir",
+  "kernel_obj": "/path/to/kernel",
+  "syzkaller": "/path/to/syzkaller"
+}
+EOF
+
+# Run fuzzing
+pf fuzz-kernel-syzkaller config=syzkaller.cfg duration=3600
 ```
 
-This workflow:
-1. Extracts firmware from device
-2. Analyzes file structure and entropy
-3. Extracts embedded filesystems
-4. Searches for credentials and vulnerabilities
-5. Generates comprehensive security report
+### KFuzz Kernel Fuzzing
 
-## Integration with Existing Tools
-
-The kernel debugging system integrates seamlessly with existing binary lifting and analysis tools:
-
-### LLVM Lifting Integration
+Lightweight kernel fuzzing:
 
 ```bash
-# Lift binary and analyze for kernel vulnerabilities
-pf lift-binary-retdec binary=driver.ko
-pf kernel-analyze-r2-ioctls binary=driver.ko
-
-# Combined lifting and fuzzing workflow
-pf lift-binary-retdec binary=driver.ko
-pf kernel-fuzz-basic target=/dev/driver0 duration=600
+pf fuzz-kfuzz module=/path/to/module.ko iterations=10000
 ```
 
-### WebAssembly Integration
+### Parallel Fuzzing
 
-The system can analyze WebAssembly modules that interact with kernel interfaces:
+Multi-core fuzzing for speed:
 
 ```bash
-# Analyze WASM module for kernel interactions
-pf web-build-c-llvm
-pf kernel-analyze-r2-dangerous binary=./web/llvm/c/c_trap.ll
+pf fuzz-parallel binary=/path/to/binary workers=8 iterations=100000
 ```
 
-## Performance and Scaling
+Uses all available CPU cores for maximum throughput.
 
-### Optimization Tips
+## MicroVM Swarm Fuzzing
 
-1. **Parallel Execution**: Use `--parallel` flags for CPU-intensive tasks
-2. **VM Swarms**: Scale fuzzing across multiple lightweight VMs
-3. **Targeted Analysis**: Focus on specific vulnerability types
-4. **Incremental Analysis**: Use caching for repeated analyses
+For massive parallel fuzzing campaigns using microVMs.
 
-### Resource Requirements
-
-- **Basic Analysis**: 2GB RAM, 2 CPU cores
-- **Parallel Fuzzing**: 8GB RAM, 8+ CPU cores
-- **VM Swarms**: 16GB+ RAM, 16+ CPU cores, SSD storage
-
-## Troubleshooting
-
-### Common Issues
-
-1. **LLDB Not Found**: Install with `sudo apt-get install lldb`
-2. **Radare2 Missing**: Install with `sudo apt-get install radare2`
-3. **Flashrom Permissions**: Run with sudo or add user to appropriate groups
-4. **VM Creation Fails**: Ensure KVM support and sufficient resources
-
-### Debug Mode
-
-Enable verbose output for troubleshooting:
+### Setup VMKit Environment
 
 ```bash
-# Enable debug output
-export PF_DEBUG=1
-pf kernel-debug-test
+pf vmkit-setup
 ```
+
+### Deploy Fuzzing Swarm
+
+Launch fuzzing across multiple microVMs:
+
+```bash
+pf vmkit-deploy binary=/path/to/binary vms=20 duration=3600
+```
+
+This:
+- Spawns 20 microVMs
+- Distributes fuzzing workload
+- Monitors for crashes
+- Collects results automatically
+
+### Monitor Swarm Progress
+
+```bash
+pf vmkit-monitor
+```
+
+Shows:
+- Active VMs
+- Executions per second
+- Crashes found
+- Coverage statistics
+
+### Collect Results
+
+```bash
+pf vmkit-collect session_id=<id> output_dir=./results
+```
+
+Results include:
+- Crash inputs
+- Coverage reports
+- Crash analysis
+- Reproduction scripts
+
+## Plugin Development
+
+### Radare2 Plugins
+
+Create a radare2 plugin template:
+
+```bash
+pf plugin-create-radare2 name=my_analyzer output_dir=./plugins
+```
+
+This generates:
+- Plugin skeleton
+- r2pipe integration
+- Example commands
+- Installation script
+
+Install plugin:
+
+```bash
+pf plugin-radare2-install plugin=./plugins/my_analyzer.py
+```
+
+### Binary Ninja Plugins
+
+Create a Binary Ninja plugin template:
+
+```bash
+pf plugin-create-binja name=my_analyzer output_dir=./plugins
+```
+
+Install plugin:
+
+```bash
+pf plugin-binja-install plugin=./plugins/my_analyzer.py
+```
+
+## Workflows
+
+### Complete Driver Analysis
+
+```bash
+# 1. Discover IOCTLs
+pf ioctl-discover binary=/path/to/driver.ko
+
+# 2. Security check
+pf vuln-kernel-check module=/path/to/driver.ko
+
+# 3. Analyze structure
+pf ioctl-analyze binary=/path/to/driver.ko
+
+# 4. Fuzz IOCTLs (if driver loaded)
+pf ioctl-fuzz driver=/dev/mydriver iterations=10000
+```
+
+### Firmware Security Audit
+
+```bash
+# 1. Analyze firmware
+pf firmware-analyze image=firmware.bin
+
+# 2. Extract filesystem
+pf firmware-extract image=firmware.bin
+
+# 3. Scan extracted binaries
+for binary in firmware_extracted/_*.extracted/bin/*; do
+    pf vuln-scan binary=$binary
+done
+```
+
+### Binary Reversing Workflow
+
+```bash
+# 1. Initial analysis with radare2
+pf reverse-radare2 binary=/path/to/binary
+
+# 2. Find vulnerabilities
+pf vuln-scan binary=/path/to/binary
+
+# 3. Generate CFG
+pf reverse-control-flow binary=/path/to/binary
+
+# 4. Debug with LLDB
+pf reverse-lldb binary=/path/to/binary
+
+# 5. Fuzz for crashes
+pf fuzz-basic binary=/path/to/binary iterations=10000
+```
+
+## Platform-Specific Notes
+
+### Linux
+
+All features fully supported on Linux with:
+- Ubuntu 20.04+ (recommended)
+- Debian 11+
+- Fedora 35+
+- Arch Linux
+
+Required packages:
+```bash
+sudo apt-get install lldb radare2 binwalk flashrom gdb strace
+```
+
+### macOS
+
+Supported with limitations:
+- LLDB fully supported
+- radare2 fully supported
+- flashrom may have limited hardware support
+- Some kernel fuzzing features unavailable
+
+Install via Homebrew:
+```bash
+brew install lldb radare2 binwalk
+```
+
+### Windows (WSL)
+
+Use Windows Subsystem for Linux (WSL2) for full support.
 
 ## Security Considerations
 
-### Safe Fuzzing Practices
+**Warning**: These tools are powerful and can:
+- Crash systems
+- Corrupt data
+- Brick devices (firmware flashing)
+- Expose security vulnerabilities
 
-1. **Isolated Environment**: Use VMs for fuzzing potentially dangerous interfaces
-2. **Backup Systems**: Ensure system backups before extensive fuzzing
-3. **Resource Limits**: Set appropriate timeouts and resource constraints
-4. **Monitoring**: Monitor system stability during fuzzing campaigns
+**Best Practices**:
+1. Always test on non-production systems
+2. Use virtual machines when possible
+3. Back up before flashing firmware
+4. Verify firmware compatibility
+5. Understand legal implications of security research
+6. Follow responsible disclosure practices
 
-### Responsible Disclosure
+## Troubleshooting
 
-When vulnerabilities are discovered:
+### LLDB Issues
 
-1. Document findings thoroughly
-2. Follow responsible disclosure practices
-3. Coordinate with maintainers and security teams
-4. Provide proof-of-concept code responsibly
+**Problem**: LLDB not found
+```bash
+sudo apt-get install lldb
+# or
+brew install lldb
+```
 
-## Advanced Configuration
+**Problem**: Breakpoints not hitting
+- Ensure binary has debug symbols (`-g` flag)
+- Check if binary is stripped: `file binary`
 
-### Custom Vulnerability Patterns
+### Radare2 Issues
 
-Extend the vulnerability detection by modifying pattern files:
+**Problem**: r2pipe import error
+```bash
+pip3 install --user r2pipe
+```
+
+**Problem**: Analysis hangs
+- Use timeout in scripts
+- Try simpler analysis commands first
+
+### Firmware Issues
+
+**Problem**: Flashrom can't detect chip
+- Check hardware connections
+- Verify chip model
+- Try different programmer: `-p ch341a_spi`
+
+**Problem**: Binwalk extraction fails
+- Firmware may be encrypted
+- Try manual extraction based on `binwalk -e` output
+
+### Fuzzing Issues
+
+**Problem**: No crashes found
+- Increase iterations
+- Try different input strategies
+- Check if binary has protections (ASLR, canaries)
+
+**Problem**: Fuzzer too slow
+- Use parallel fuzzing
+- Deploy to microVM swarm
+- Optimize timeout value
+
+## Advanced Topics
+
+### Custom IOCTL Definitions
+
+Create custom IOCTL definitions for fuzzing:
 
 ```python
-# Add custom patterns to tools/kernel-debug/ioctl/ioctl_detector.py
-custom_patterns = {
-    'custom_vuln': {
-        'patterns': [re.compile(r'dangerous_function\s*\(')],
-        'score': 9,
-        'description': 'Custom vulnerability pattern'
-    }
+# custom_ioctls.json
+{
+  "ioctls": [
+    {"code": "0x8001", "name": "IOCTL_CUSTOM_CMD1"},
+    {"code": "0x8002", "name": "IOCTL_CUSTOM_CMD2"}
+  ]
 }
 ```
 
-### Plugin Development
+### Writing LLDB Scripts
 
-Create custom analysis plugins:
+Create advanced LLDB automation scripts:
 
-```python
-# Example plugin structure
-class CustomKernelAnalyzer:
-    def analyze(self, target):
-        # Custom analysis logic
-        return results
+```lldb
+# advanced.lldb
+target create /path/to/binary
+
+# Breakpoint with Python callback
+break set -n malloc
+break command add -s python
+import lldb
+frame = lldb.thread.GetSelectedFrame()
+size_arg = frame.FindVariable("size")
+print(f"malloc({size_arg.GetValue()})")
+DONE
+
+run
 ```
 
-## Integration with CI/CD
+### Creating Syzkaller Descriptions
 
-### Automated Security Testing
+Define syscall interfaces for Syzkaller:
 
-```yaml
-# Example GitHub Actions workflow
-- name: Kernel Security Analysis
-  run: |
-    pf kernel-debug-setup
-    pf kernel-vulnerability-scan binary=./driver.ko
-    pf kernel-fuzz-basic target=/dev/null duration=300
+```text
+# my_driver.txt
+include <linux/ioctl.h>
+
+ioctl$MYDRIVER(fd fd, cmd const[IOCTL_CMD], arg ptr[in, my_struct])
+
+my_struct {
+    field1  int32
+    field2  array[int8, 64]
+}
 ```
 
-### Continuous Monitoring
+## References
 
-Set up continuous security monitoring:
+- [LLDB Documentation](https://lldb.llvm.org/)
+- [Radare2 Book](https://book.rada.re/)
+- [Ghidra Documentation](https://ghidra-sre.org/)
+- [Syzkaller Documentation](https://github.com/google/syzkaller)
+- [Flashrom Manual](https://www.flashrom.org/Flashrom)
+- [Binwalk Wiki](https://github.com/ReFirmLabs/binwalk/wiki)
+
+## See Also
+
+- [`LLVM-LIFTING.md`](LLVM-LIFTING.md) - Binary lifting guide
+- [`../demos/kernel-debugging/README.md`](../demos/kernel-debugging/README.md) - Example workflows
+- Main [`README.md`](../README.md) - Project overview
+
+## Getting Help
+
+For debugging help:
 
 ```bash
-# Scheduled vulnerability scanning
-0 2 * * * pf kernel-vulnerability-scan binary=/path/to/driver.ko output=/var/log/kernel-security.json
+pf debug-help
 ```
 
-## Contributing
-
-To contribute to the kernel debugging system:
-
-1. Fork the repository
-2. Create feature branch
-3. Add tests for new functionality
-4. Submit pull request with detailed description
-
-### Development Setup
+For list of all debugging tasks:
 
 ```bash
-# Development environment setup
-pf kernel-debug-setup
-pf kernel-debug-test
-
-# Run development tests
-python3 -m pytest tools/kernel-debug/tests/
+pf list | grep -E "(ioctl|firmware|reverse|vuln|fuzz|vmkit|plugin)"
 ```
-
-## Support and Resources
-
-- **Documentation**: See `docs/` directory for detailed guides
-- **Examples**: Check `examples/kernel-debug/` for usage examples
-- **Issues**: Report bugs and feature requests on GitHub
-- **Community**: Join discussions in project forums
-
----
-
-This kernel debugging system provides comprehensive tools for security researchers, kernel developers, and system administrators to analyze, debug, and secure kernel-mode code effectively.

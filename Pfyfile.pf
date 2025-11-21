@@ -3,8 +3,10 @@
 # Include binary lifting tasks
 include Pfyfile.lifting.pf
 
-# Include kernel debugging tasks
-include Pfyfile.kernel-debug.pf
+# Include binary injection tasks
+include Pfyfile.injection.pf
+# Include debugging and reverse engineering tasks
+include Pfyfile.debugging.pf
 
 task web-dev
   shell_lang bash
