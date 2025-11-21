@@ -91,6 +91,16 @@ Convert compiled binaries back to LLVM IR for analysis, optimization, and transf
 
 See [LLVM Lifting Guide](docs/LLVM-LIFTING.md) for complete documentation.
 
+### Binary Injection 💉
+Inject compiled polyglot code into existing binaries and shared libraries:
+- **Multi-Language Payloads**: Create injectable libraries from Rust, C, Fortran, WASM, or LLVM IR
+- **Multiple Injection Methods**: LD_PRELOAD, binary patching, constructor injection, runtime injection
+- **Cross-Platform Support**: Linux (.so), macOS (.dylib), Windows (.dll) compatibility
+- **Integration with Compilation**: Convert any pf-compiled code into injectable payloads
+- **Advanced Techniques**: Function hooking, process memory injection, dynamic library manipulation
+- **Security Research**: Tools for binary analysis, reverse engineering, and penetration testing
+
+See [Binary Injection Guide](demos/binary-injection/README.md) for complete documentation.
 ### Advanced Debugging & Reverse Engineering 🐛
 Interactive debugging and reverse engineering for ELF binaries (C/C++/Rust):
 - **GDB & LLDB**: Support for both standard debuggers with seamless switching
@@ -699,6 +709,23 @@ Additional documentation in `pf-runner/`:
 | `pf test-lifting-workflow` | Test complete lifting workflow |
 | `pf lifting-help` | Show detailed lifting commands help |
 | **Binary Injection Commands** | |
+| `pf install-injection-tools` | Install binary injection and manipulation tools |
+| `pf build-injection-examples` | Build example injection payloads and targets |
+| `pf create-injection-payload-rust source=<path>` | Create injectable Rust library |
+| `pf create-injection-payload-c source=<file.c>` | Create injectable C library |
+| `pf create-injection-payload-fortran source=<file.f90>` | Create injectable Fortran library |
+| `pf create-injection-payload-llvm source=<file.ll>` | Create injectable library from LLVM IR |
+| `pf create-injection-payload-wasm-native source=<file.wasm>` | Convert WASM to injectable native library |
+| `pf analyze-injection-target binary=<path>` | Analyze binary for injection opportunities |
+| `pf inject-static-library binary=<path> payload=<lib.so>` | Patch binary to load injection library |
+| `pf inject-constructor binary=<path> payload=<lib.so>` | Add constructor injection to binary |
+| `pf inject-runtime-library pid=<pid> payload=<lib.so>` | Inject library into running process |
+| `pf inject-preload binary=<path> payload=<lib.so>` | Run binary with LD_PRELOAD injection |
+| `pf inject-rust-into-binary rust_source=<path> target_binary=<path>` | Complete Rust injection workflow |
+| `pf inject-c-into-binary c_source=<file.c> target_binary=<path>` | Complete C injection workflow |
+| `pf inject-wasm-into-binary wasm_source=<file.wasm> target_binary=<path>` | Complete WASM injection workflow |
+| `pf test-injection-workflow` | Test complete injection pipeline |
+| `pf injection-help` | Show detailed injection commands help |
 | `pf compile-c-shared-lib source=<c>` | Compile C to shared library (.so/.dylib) |
 | `pf compile-rust-shared-lib crate=<dir>` | Compile Rust to shared library |
 | `pf inject-shared-lib binary=<exe> lib=<so>` | Inject library into program (LD_PRELOAD) |
