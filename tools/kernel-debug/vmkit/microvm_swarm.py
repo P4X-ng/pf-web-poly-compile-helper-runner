@@ -14,7 +14,7 @@ import subprocess
 import threading
 import multiprocessing
 from pathlib import Path
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 import argparse
 
