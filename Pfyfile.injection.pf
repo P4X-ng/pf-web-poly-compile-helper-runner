@@ -7,11 +7,11 @@
 
 task compile-c-shared-lib
   describe Compile C code to shared library (.so on Linux, .dylib on macOS) - source=/path/to/file.c output=/path/to/lib.so
-  shell test -n "${source}" || (echo "Error: source parameter required" && exit 1)
-  shell mkdir -p $(dirname ${output:-lib.so})
-  shell if [ "$(uname)" = "Darwin" ]; then clang -shared -fPIC -O2 ${source} -o ${output:-lib.dylib}; else clang -shared -fPIC -O2 ${source} -o ${output:-lib.so}; fi
-  shell echo "Compiled shared library: ${output:-lib.so}"
-  shell file ${output:-lib.so}
+  shell test -n "$source" || (echo "Error: source parameter required" && exit 1)
+  shell test -z "$output" && output="lib.so"; mkdir -p "$(dirname "$output")"
+  shell if [ "$(uname)" = "Darwin" ]; then ext=".dylib"; else ext=".so"; fi; test -z "$output" && output="lib$ext"; clang -shared -fPIC -O2 "$source" -o "$output"
+  shell echo "Compiled shared library: $output"
+  shell file "$output"
 end
 
 task compile-rust-shared-lib
