@@ -44,7 +44,7 @@ PluginCommand.register(
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: {sys.argv[0]} <plugin_name> [output_dir]")
+        print(f"Usage: {sys.argv[0]} <plugin_name> [output_dir]")
         sys.exit(1)
     
     name = sys.argv[1]
