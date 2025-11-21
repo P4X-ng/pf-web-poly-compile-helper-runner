@@ -23,7 +23,7 @@ import re
 import sys
 import shlex
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Callable
 
 from fabric import Connection
 
@@ -576,7 +576,10 @@ def _c_for(spec, sudo: bool, sudo_user: Optional[str]):
 
 def _run_local(cmd: str, env=None):
     import subprocess
-    p = subprocess.Popen(cmd, shell=True, env=env)
+    # Use bash explicitly for better bash syntax support (arrays, [[, etc.)
+    # Wrap command to execute via bash -c
+    bash_cmd = ["bash", "-c", cmd]
+    p = subprocess.Popen(bash_cmd, env=env)
     return p.wait()
 
 def _sudo_wrap(cmd: str, sudo_user: Optional[str]) -> str:
@@ -587,9 +590,17 @@ def _sudo_wrap(cmd: str, sudo_user: Optional[str]) -> str:
 def _exec_line_fabric(c: Optional[Connection], line: str, sudo: bool, sudo_user: Optional[str], prefix: str, params: dict, task_env: dict):
     # interpolate & parse
     line = _interpolate(line, params, task_env)
-    parts = shlex.split(line)
-    if not parts: return 0
-
+    
+    # Extract the verb (first word) to determine the operation
+    # For 'shell' commands, we preserve the rest of the line as-is to maintain bash syntax
+    stripped = line.strip()
+    if not stripped: return 0
+    
+    # Split at most once to get the verb and the rest
+    parts_split = stripped.split(maxsplit=1)
+    verb = parts_split[0]
+    rest_of_line = parts_split[1] if len(parts_split) > 1 else ""
+    
     def run(cmd: str):
         # Build environment for this command
         merged_env = dict(os.environ)
@@ -619,12 +630,15 @@ def _exec_line_fabric(c: Optional[Connection], line: str, sudo: bool, sudo_user:
             r = c.run(full_cmd, pty=True, warn=True, hide=False)
             return r.exited
 
+    # Handle 'shell' command specially - preserve bash syntax
+    if verb == "shell":
+        if not rest_of_line: raise ValueError("shell needs a command")
+        return run(rest_of_line)
+    
+    # For other commands, parse with shlex to handle quoted arguments
+    parts = shlex.split(line)
+    if not parts: return 0
     op = parts[0]; args = parts[1:]
-
-    if op == "shell":
-        cmd = " ".join(args)
-        if not cmd: raise ValueError("shell needs a command")
-        return run(cmd)
 
     if op == "packages":
         if len(args) < 2: raise ValueError("packages install/remove <names...>")
@@ -1350,7 +1364,7 @@ def main(argv: List[str]) -> int:
                 except Exception as e:
                     print(f"{prefix} !! error: {e}", file=sys.stderr)
                     return 1
-x        if c is not None:
+        if c is not None:
             c.close()
         return rc
 
