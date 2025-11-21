@@ -91,6 +91,18 @@ Convert compiled binaries back to LLVM IR for analysis, optimization, and transf
 
 See [LLVM Lifting Guide](docs/LLVM-LIFTING.md) for complete documentation.
 
+### Advanced Kernel Debugging 🛡️
+Comprehensive kernel-mode debugging and security analysis capabilities:
+- **IOCTL Detection**: Automated identification and analysis of IOCTL handlers in kernel modules
+- **Firmware Extraction**: Integration with flashrom and other tools for firmware dumping and analysis
+- **Advanced Breakpoints**: LLDB integration with complex conditional breakpoints and vulnerability detection
+- **High-Performance Fuzzing**: Fast kernel interface fuzzing with parallel execution support
+- **MicroVM Swarms**: Scalable fuzzing across multiple lightweight VMs for mass security testing
+- **Plugin Ecosystem**: Radare2 and Binary Ninja plugins for enhanced reverse engineering
+- **Vulnerability Scanning**: Automated detection of common kernel vulnerabilities and attack patterns
+- **Mass Fuzzing Integration**: Syzkaller and KFuzz integration for comprehensive kernel testing
+
+See [Kernel Debugging Guide](docs/KERNEL-DEBUGGING.md) for complete documentation.
 ### Binary Injection 💉
 Inject compiled polyglot code into existing binaries and shared libraries:
 - **Multi-Language Payloads**: Create injectable libraries from Rust, C, Fortran, WASM, or LLVM IR
