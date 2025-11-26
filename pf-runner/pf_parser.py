@@ -1346,6 +1346,9 @@ def main(argv: List[str]) -> int:
         # Handle --arg value format
         if a.startswith("--") and i + 1 < len(argv):
             k = a[2:]  # Strip -- prefix
+            # Special handling for --list and --help (treat as tasks)
+            if k in ("list", "help"):
+                tasks = argv[i:]; break
             # Check if next arg is a value (doesn't start with --)
             next_arg = argv[i + 1]
             if k in ("hosts", "host", "env", "user", "port", "sudo-user", "sudo_user", "become-user", "become_user") and not next_arg.startswith("--"):
@@ -1361,6 +1364,10 @@ def main(argv: List[str]) -> int:
             elif k in ("sudo", "become"):
                 sudo = True
                 i += 1; continue
+        
+        # Handle --list and --help as standalone flags
+        if a in ("--list", "--help", "-h"):
+            tasks = argv[i:]; break
         
         # Handle legacy arg=value format (without --)
         if "=" in a and not a.startswith("--"):
@@ -1388,7 +1395,7 @@ def main(argv: List[str]) -> int:
             print("\nAvailable tasks:")
             _print_list(file_arg=pfy_file_arg)
         return 0
-    if tasks[0] == "list":
+    if tasks[0] in ("list", "--list"):
         _print_list(file_arg=pfy_file_arg); return 0
 
     # Resolve hosts
@@ -1400,12 +1407,12 @@ def main(argv: List[str]) -> int:
     # Load tasks once
     dsl_src, task_sources = _load_pfy_source_with_includes(file_arg=pfy_file_arg)
     dsl_tasks = parse_pfyfile_text(dsl_src, task_sources)
-    valid_task_names = set(BUILTINS.keys()) | set(dsl_tasks.keys()) | {"list", "help", "--help"}
+    valid_task_names = set(BUILTINS.keys()) | set(dsl_tasks.keys()) | {"list", "help", "--help", "--list"}
 
     # Parse multi-task + params: <task> [k=v ...] <task2> [k=v ...] ...
     selected = []
     j = 0
-    all_names_for_alias = list(BUILTINS.keys()) + list(dsl_tasks.keys()) + ["list","help","--help"]
+    all_names_for_alias = list(BUILTINS.keys()) + list(dsl_tasks.keys()) + ["list","help","--help","--list"]
     aliasmap_all = _alias_map(all_names_for_alias)
     while j < len(tasks):
         tname = tasks[j]
