@@ -44,7 +44,7 @@ task test-all-quotes
   describe Run all quote preservation tests
   shell echo "=== Running all quote tests ==="
   shell ./pf test_quotes.pf test-double-quotes
-  shell ./pf test_quotes.pf test-single-quotes  
+  shell ./pf test_quotes.pf test-single-quotes
   shell ./pf test_quotes.pf test-mixed-quotes
   shell ./pf test_quotes.pf test-escaped-quotes
   shell ./pf test_quotes.pf test-bash-syntax
