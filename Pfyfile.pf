@@ -9,6 +9,14 @@ include Pfyfile.injection.pf
 include Pfyfile.debugging.pf
 # Include ROP exploit demonstration tasks
 include Pfyfile.rop.pf
+# Include practice binaries tasks
+include Pfyfile.practice.pf
+
+# Include security testing tasks
+include Pfyfile.security.pf
+
+# Include git cleanup tasks
+include Pfyfile.git-cleanup.pf
 
 task web-dev
   describe Start development server with REST API support

@@ -16,6 +16,16 @@ demos/rop-exploit/vulnerable_service
 demos/rop-exploit/vulnerable_service-nx
 demos/rop-exploit/*.bin
 demos/rop-exploit/core
+# Practice binaries (built, not committed)
+demos/practice-binaries/buffer-overflow/stack_overflow
+demos/practice-binaries/buffer-overflow/heap_overflow
+demos/practice-binaries/format-string/format_vuln
+demos/practice-binaries/heap-exploits/use_after_free
+demos/practice-binaries/heap-exploits/double_free
+demos/practice-binaries/integer-overflow/int_overflow
+demos/practice-binaries/race-condition/toctou_race
+demos/practice-binaries/command-injection/cmd_injection
+>>>>>>> origin/main
 node_modules/
 *.log
 
