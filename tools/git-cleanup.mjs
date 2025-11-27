@@ -18,6 +18,10 @@ import ora from 'ora';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Constants
+const MAX_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB buffer for git operations
+const TEMP_FILE_PREFIX = '.git-cleanup-paths-';
+
 // Utility functions
 function formatBytes(bytes) {
   if (bytes === 0) return '0 Bytes';
@@ -29,7 +33,7 @@ function formatBytes(bytes) {
 
 function execCommand(cmd, cwd = process.cwd()) {
   try {
-    return execSync(cmd, { cwd, encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 }).trim();
+    return execSync(cmd, { cwd, encoding: 'utf-8', maxBuffer: MAX_BUFFER_SIZE }).trim();
   } catch (error) {
     throw new Error(`Command failed: ${cmd}\n${error.message}`);
   }
@@ -71,6 +75,11 @@ async function installGitFilterRepo() {
     console.log(chalk.cyan('  pip3 install --user git-filter-repo'));
     console.log(chalk.cyan('  # or'));
     console.log(chalk.cyan('  pip install --user git-filter-repo'));
+    console.log(chalk.yellow('\nTroubleshooting:'));
+    console.log(chalk.gray('  - Ensure Python 3 and pip are installed: python3 --version && pip3 --version'));
+    console.log(chalk.gray('  - Update pip: pip3 install --upgrade pip'));
+    console.log(chalk.gray('  - Check ~/.local/bin is in your PATH'));
+    console.log(chalk.gray('  - Or install from source: https://github.com/newren/git-filter-repo'));
     return false;
   }
 }
@@ -208,43 +217,56 @@ async function createBackup() {
 async function removeFilesFromHistory(filePaths) {
   console.log(chalk.bold('\n🧹 Removing files from git history...\n'));
   
-  // Create a temporary file with paths to remove
-  const tempFile = path.join(process.cwd(), '.git-cleanup-paths.txt');
-  fs.writeFileSync(tempFile, filePaths.join('\n'));
+  // Create a temporary file with paths to remove (use unique name to avoid conflicts)
+  const timestamp = Date.now();
+  const pid = process.pid;
+  const tempFile = path.join(process.cwd(), `${TEMP_FILE_PREFIX}${timestamp}-${pid}.txt`);
   
-  return new Promise((resolve, reject) => {
-    const args = [
-      '--invert-paths',
-      '--paths-from-file', tempFile,
-      '--force'
-    ];
-    
-    const proc = spawn('git-filter-repo', args, {
-      cwd: process.cwd(),
-      stdio: 'inherit'
-    });
-    
-    proc.on('close', (code) => {
-      // Clean up temp file
-      try {
+  // Ensure cleanup happens even if there's an error
+  const cleanup = () => {
+    try {
+      if (fs.existsSync(tempFile)) {
         fs.unlinkSync(tempFile);
-      } catch {}
-      
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`git-filter-repo exited with code ${code}`));
       }
-    });
+    } catch (error) {
+      console.warn(chalk.yellow(`Warning: Could not delete temporary file: ${tempFile}`));
+    }
+  };
+  
+  try {
+    fs.writeFileSync(tempFile, filePaths.join('\n'));
     
-    proc.on('error', (error) => {
-      // Clean up temp file
-      try {
-        fs.unlinkSync(tempFile);
-      } catch {}
-      reject(error);
+    return new Promise((resolve, reject) => {
+      const args = [
+        '--invert-paths',
+        '--paths-from-file', tempFile,
+        '--force'
+      ];
+      
+      const proc = spawn('git-filter-repo', args, {
+        cwd: process.cwd(),
+        stdio: 'inherit'
+      });
+      
+      proc.on('close', (code) => {
+        cleanup();
+        
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`git-filter-repo exited with code ${code}`));
+        }
+      });
+      
+      proc.on('error', (error) => {
+        cleanup();
+        reject(error);
+      });
     });
-  });
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
 }
 
 async function showNextSteps() {
@@ -374,8 +396,12 @@ async function main() {
   }
 }
 
-// Run if executed directly
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Run if executed directly (check multiple conditions for robustness)
+const isMainModule = import.meta.url === `file://${process.argv[1]}` || 
+                     import.meta.url.endsWith(process.argv[1]) ||
+                     process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isMainModule) {
   main().catch(error => {
     console.error(chalk.red(`\nFatal error: ${error.message}`));
     process.exit(1);
