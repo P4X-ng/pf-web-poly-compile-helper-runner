@@ -12,6 +12,10 @@ demos/**/Cargo.lock
 demos/debugging/examples/bin/
 demos/binary-lifting/examples/bin/
 demos/binary-lifting/examples/output/
+demos/rop-exploit/vulnerable_service
+demos/rop-exploit/vulnerable_service-nx
+demos/rop-exploit/*.bin
+demos/rop-exploit/core
 node_modules/
 *.log
 

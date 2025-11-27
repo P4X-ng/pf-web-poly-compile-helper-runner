@@ -151,6 +151,17 @@ Interactive debugging and reverse engineering for ELF binaries (C/C++/Rust):
 
 See [Debugging Guide](demos/debugging/README.md) for complete documentation.
 
+### ROP (Return-Oriented Programming) Exploit Demo 💥
+End-to-end demonstration of exploiting buffer overflow vulnerabilities using ROP:
+- **Vulnerable Legacy Service**: Simulated old software with stack-based buffer overflow
+- **ROP Chain Generation**: Automated tools to build exploit chains
+- **NX Bypass**: Demonstrates bypassing non-executable stack protection
+- **Educational Framework**: Complete walkthrough from vulnerability to exploitation
+- **Analysis Tools**: Gadget finding, disassembly, and security checking
+- **Interactive Testing**: Build, analyze, and test exploits step-by-step
+
+See [ROP Exploit Demo](demos/rop-exploit/README.md) for complete documentation.
+
 ### Testing & Development
 - **Live dev server**: Static HTTP server with CORS headers for WASM
 - **Playwright tests**: Automated browser testing for WASM modules
@@ -734,6 +745,7 @@ npx playwright show-report
 - **Kernel Debugging Demo**: See [`demos/kernel-debugging/README.md`](demos/kernel-debugging/README.md) for examples
 - **Binary Lifting Examples**: See [`demos/binary-lifting/README.md`](demos/binary-lifting/README.md) for lifting tutorials
 - **Debugging Guide**: See [`demos/debugging/README.md`](demos/debugging/README.md) for debugging and reverse engineering
+- **ROP Exploit Demo**: See [`demos/rop-exploit/README.md`](demos/rop-exploit/README.md) for ROP exploitation tutorial
 - **Web Demo Documentation**: See [`demos/pf-web-polyglot-demo-plus-c/README.md`](demos/pf-web-polyglot-demo-plus-c/README.md)
 - **WIT Components**: See [`pf/wit/README.md`](pf/wit/README.md)
 
@@ -812,6 +824,18 @@ Additional documentation in `pf-runner/`:
 | `pf kernel-parse-detect binary=<path>` | **Auto-detect parse functions in binary** |
 | `pf kernel-complexity-analyze binary=<path>` | **Find functions with many if/else, long functions, high complexity** |
 | `pf kernel-fuzz-in-memory binary=<path>` | **Fast in-memory fuzzing with loop-back (100-1000x faster)** |
+| **ROP Exploit Demonstration** | |
+| `pf rop-build` | Build vulnerable binaries for ROP demonstration |
+| `pf rop-check` | Check security features of built binaries |
+| `pf rop-gadgets` | Find ROP gadgets in the vulnerable binary |
+| `pf rop-exploit` | Generate ROP exploit payload |
+| `pf rop-test` | Test the ROP exploit (will crash the program) |
+| `pf rop-demo` | Complete ROP demonstration workflow |
+| `pf rop-disasm` | Show disassembly of vulnerable function |
+| `pf rop-symbols` | Show symbol table of vulnerable binary |
+| `pf rop-install-tools` | Install ROP analysis tools (ROPgadget, ropper) |
+| `pf rop-clean` | Clean ROP demo build artifacts |
+| `pf rop-help` | Show ROP demo help and available commands |
 | **Debugging & Reverse Engineering** | |
 | `pf install-debuggers` | Install GDB, LLDB, and pwndbg |
 | `pf build-debug-examples` | Build C/C++/Rust debug examples |
