@@ -7,6 +7,11 @@ include Pfyfile.lifting.pf
 include Pfyfile.injection.pf
 # Include debugging and reverse engineering tasks
 include Pfyfile.debugging.pf
+# Include practice binaries tasks
+include Pfyfile.practice.pf
+
+# Include security testing tasks
+include Pfyfile.security.pf
 
 # Include git cleanup tasks
 include Pfyfile.git-cleanup.pf
