@@ -18,6 +18,12 @@ include Pfyfile.security.pf
 # Include git cleanup tasks
 include Pfyfile.git-cleanup.pf
 
+# Include TUI tasks
+include Pfyfile.tui.pf
+
+# Include debugging tools tasks
+include Pfyfile.debug-tools.pf
+
 task web-dev
   describe Start development server with REST API support
   shell_lang bash
