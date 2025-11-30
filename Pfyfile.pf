@@ -18,6 +18,9 @@ include Pfyfile.security.pf
 # Include git cleanup tasks
 include Pfyfile.git-cleanup.pf
 
+# Include exploit development tasks
+include Pfyfile.exploit.pf
+
 task web-dev
   describe Start development server with REST API support
   shell_lang bash
@@ -158,6 +161,12 @@ task install
   describe Install everything - base pf runner and all web/WASM development tools
   
   shell bash install.sh all
+end
+
+task install-exploit
+  describe Install exploit development tools (pwntools, checksec, ROPgadget, ropper)
+  
+  shell pf install-exploit-tools
 end
 
 task sync-demo
