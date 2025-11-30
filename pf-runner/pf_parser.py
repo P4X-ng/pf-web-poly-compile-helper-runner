@@ -56,7 +56,7 @@ def _find_pfyfile(start_dir: Optional[str] = None, file_arg: Optional[str] = Non
         cur = parent
 
 # ---------- Interpolation ----------
-_VAR_RE = re.compile(r"\$(\w+)|\$\{(\w+)\}")
+_VAR_RE = re.compile(r"\$([a-zA-Z_][\w-]*)|\$\{([a-zA-Z_][\w-]*)\}")
 def _interpolate(text: str, params: dict, extra_env: dict | None = None) -> str:
     merged = dict(os.environ)
     if extra_env:
@@ -435,11 +435,12 @@ def _render_polyglot_command(lang_hint: Optional[str], cmd: str, working_dir: Op
 
 # ---------- DSL (include + describe) ----------
 class Task:
-    def __init__(self, name: str, source_file: Optional[str] = None):
+    def __init__(self, name: str, source_file: Optional[str] = None, params: Optional[Dict[str, str]] = None):
         self.name = name
         self.lines: List[str] = []
         self.description: Optional[str] = None
         self.source_file = source_file  # Track which file this task came from
+        self.params: Dict[str, str] = params or {}  # Default parameter values
     def add(self, line: str): self.lines.append(line)
 
 def _read_text_file(path: str) -> str:
@@ -460,7 +461,11 @@ def _expand_includes_from_text(text: str, base_dir: str, visited: set[str], curr
         stripped = line.strip()
         if stripped.startswith("task "):
             inside_task = True
-            task_name = stripped.split(None, 1)[1].strip() if len(stripped.split()) > 1 else ""
+            # Parse task name only (without parameters)
+            try:
+                task_name, _ = _parse_task_definition(stripped)
+            except ValueError:
+                task_name = stripped.split(None, 1)[1].strip() if len(stripped.split()) > 1 else ""
             current_task_name = task_name
             # Track the source file for this task (use current_file if in an include)
             if current_file:
@@ -510,6 +515,48 @@ def _load_pfy_source_with_includes(file_arg: Optional[str] = None) -> Tuple[str,
         return _expand_includes_from_text(main_text, base_dir, visited)
     return PFY_EMBED, {}
 
+def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str]]:
+    """
+    Parse a task definition line to extract task name and parameters.
+    
+    Examples:
+        "task my-task" -> ("my-task", {})
+        "task my-task param1=value1" -> ("my-task", {"param1": "value1"})
+        "task my-task param1=\"\" param2=default" -> ("my-task", {"param1": "", "param2": "default"})
+    
+    Returns:
+        Tuple of (task_name, parameters_dict)
+    """
+    # Remove "task " prefix
+    rest = line[5:].strip()
+    if not rest:
+        raise ValueError("Task name missing.")
+    
+    # Use shlex to properly handle quoted values
+    try:
+        tokens = shlex.split(rest)
+    except ValueError:
+        # If shlex fails, fall back to simple split
+        tokens = rest.split()
+    
+    if not tokens:
+        raise ValueError("Task name missing.")
+    
+    task_name = tokens[0]
+    params: Dict[str, str] = {}
+    
+    # Parse parameter definitions (key=value pairs)
+    for token in tokens[1:]:
+        if '=' in token:
+            key, value = token.split('=', 1)
+            params[key] = value
+        else:
+            # If a token doesn't have '=', it might be part of task name (shouldn't happen with proper syntax)
+            # For now, we'll just skip it to be lenient
+            pass
+    
+    return task_name, params
+
 def parse_pfyfile_text(text: str, task_sources: Optional[Dict[str, str]] = None) -> Dict[str, Task]:
     """Parse Pfyfile text into Task objects with optional source tracking"""
     tasks: Dict[str, Task] = {}
@@ -518,11 +565,15 @@ def parse_pfyfile_text(text: str, task_sources: Optional[Dict[str, str]] = None)
         line = raw.strip()
         if not line or line.startswith("#"): continue
         if line.startswith("task "):
-            name = line.split(None, 1)[1].strip()
-            if not name: raise ValueError("Task name missing.")
-            source_file = task_sources.get(name) if task_sources else None
-            cur = Task(name, source_file=source_file)
-            tasks[name] = cur
+            task_name, params = _parse_task_definition(line)
+            # For task_sources lookup, we need to check both the full line and just the task name
+            # Priority: exact match with full line, then just task name
+            full_line = line.split(None, 1)[1].strip()
+            source_file = None
+            if task_sources:
+                source_file = task_sources.get(full_line) or task_sources.get(task_name)
+            cur = Task(task_name, source_file=source_file, params=params)
+            tasks[task_name] = cur
             continue
         if line == "end":
             cur = None; continue
@@ -1435,10 +1486,20 @@ def main(argv: List[str]) -> int:
                 k, v = arg.split("=", 1)
             params[k] = v
             j += 1
+        
+        # Merge default parameters from task definition with provided parameters
         if tname in BUILTINS:
             lines = BUILTINS[tname]
+            # Builtins don't have default parameters
         else:
-            lines = dsl_tasks[tname].lines
+            task_obj = dsl_tasks[tname]
+            lines = task_obj.lines
+            # Start with default parameters from task definition
+            merged_params = dict(task_obj.params)
+            # Override with provided parameters
+            merged_params.update(params)
+            params = merged_params
+        
         selected.append((tname, lines, params))
 
     # Execute in parallel across hosts
