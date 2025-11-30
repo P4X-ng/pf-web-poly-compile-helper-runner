@@ -347,6 +347,7 @@ class PfTUI:
             ("pwntools", "python3 -c 'import pwn'", "pwntools"),
             ("checksec", "checksec --version", "checksec"),
             ("ROPgadget", "ROPgadget --version", "ROPgadget"),
+            ("ropper", "ropper --version", "ropper"),
             ("strace", "strace -V", "strace"),
             ("patchelf", "patchelf --version", "patchelf"),
         ]

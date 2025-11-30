@@ -55,17 +55,19 @@ task install-snowman
   shell echo "📦 Installing Snowman decompiler..."
   shell echo "Checking for build dependencies..."
   shell [ -f /etc/debian_version ] && (sudo apt-get update && sudo apt-get install -y cmake g++ libboost-dev qt5-qmake qtbase5-dev) || [ -f /etc/redhat-release ] && (sudo yum groupinstall -y "Development Tools" && sudo yum install -y cmake boost-devel qt5-qtbase-devel) || [ "$(uname)" = "Darwin" ] && (brew install cmake boost qt@5)
-  shell echo "Cloning Snowman repository..."
-  shell cd /tmp && git clone https://github.com/x64dbg/snowman.git snowman-install
-  shell cd /tmp/snowman-install && mkdir -p build && cd build
+  shell echo "Cloning Snowman repository from verified x64dbg fork..."
+  shell cd /tmp && git clone --depth 1 https://github.com/x64dbg/snowman.git snowman-install || (echo "❌ Failed to clone repository" && exit 1)
+  shell cd /tmp/snowman-install && mkdir -p build && cd build || (echo "❌ Failed to create build directory" && exit 1)
   shell echo "Building Snowman (this may take a few minutes)..."
-  shell cd /tmp/snowman-install/build && cmake .. && make -j$(nproc 2>/dev/null || echo 4)
+  shell cd /tmp/snowman-install/build && cmake .. || (echo "❌ CMake configuration failed" && exit 1)
+  shell cd /tmp/snowman-install/build && make -j$(nproc 2>/dev/null || echo 4) || (echo "❌ Compilation failed" && exit 1)
   shell echo "Installing to ~/.local/bin..."
   shell mkdir -p ~/.local/bin
-  shell cp /tmp/snowman-install/build/nocode/nocode ~/.local/bin/snowman 2>/dev/null || cp /tmp/snowman-install/build/src/nocode/nocode ~/.local/bin/snowman
+  shell if [ -f /tmp/snowman-install/build/nocode/nocode ]; then cp /tmp/snowman-install/build/nocode/nocode ~/.local/bin/snowman; elif [ -f /tmp/snowman-install/build/src/nocode/nocode ]; then cp /tmp/snowman-install/build/src/nocode/nocode ~/.local/bin/snowman; else echo "❌ Could not find compiled binary" && exit 1; fi
   shell rm -rf /tmp/snowman-install
   shell echo "✓ Snowman installed to ~/.local/bin/snowman"
   shell echo "Note: Make sure ~/.local/bin is in your PATH"
+  shell echo "Note: Using x64dbg fork for active maintenance"
 end
 
 task install-binaryninja-info
