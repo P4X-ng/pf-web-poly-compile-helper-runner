@@ -75,11 +75,11 @@ if [ -f "README.md" ]; then
     readme_tasks=$(extract_doc_tasks "README.md")
     missing_tasks=()
     
-    for task in $readme_tasks; do
-        if ! pf list | grep -q "^$task\s"; then
+    while IFS= read -r task; do
+        if [ -n "$task" ] && ! pf list | grep -q "^$task\s"; then
             missing_tasks+=("$task")
         fi
-    done
+    done <<< "$readme_tasks"
     
     if [ ${#missing_tasks[@]} -eq 0 ]; then
         log_pass "README.md task examples - All tasks exist"
