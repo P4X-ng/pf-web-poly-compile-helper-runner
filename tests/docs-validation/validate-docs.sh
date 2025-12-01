@@ -102,11 +102,11 @@ if [ -f "$DOCS_DIR/REST-API.md" ]; then
         sleep 3
         
         missing_endpoints=()
-        for endpoint in $api_endpoints; do
-            if ! curl -s "http://localhost:8082$endpoint" >/dev/null 2>&1; then
+        while IFS= read -r endpoint; do
+            if [ -n "$endpoint" ] && ! curl -s "http://localhost:8082$endpoint" >/dev/null 2>&1; then
                 missing_endpoints+=("$endpoint")
             fi
-        done
+        done <<< "$api_endpoints"
         
         kill $api_pid 2>/dev/null || true
         
