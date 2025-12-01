@@ -85,9 +85,7 @@ test_compilation() {
     
     cd "$ROOT_DIR"
     
-    local cmd="pf $task_name $params"
-    
-    if output=$(eval "$cmd" 2>&1); then
+    if output=$(pf "$task_name" $params 2>&1); then
         if [ -n "$expected_output_file" ] && [ -f "$expected_output_file" ]; then
             log_pass "$test_name - Output file created: $expected_output_file"
         elif [ -z "$expected_output_file" ]; then
