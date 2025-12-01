@@ -105,9 +105,7 @@ test_debug_task() {
     
     cd "$ROOT_DIR"
     
-    local cmd="pf $task_name $params"
-    
-    if output=$(timeout 30 eval "$cmd" 2>&1); then
+    if output=$(timeout 30 pf "$task_name" $params 2>&1); then
         if [ -n "$expected_output" ]; then
             if [[ "$output" == *"$expected_output"* ]]; then
                 log_pass "$test_name - Contains expected output"
