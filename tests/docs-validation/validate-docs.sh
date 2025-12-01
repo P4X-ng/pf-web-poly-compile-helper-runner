@@ -99,7 +99,20 @@ if [ -f "$DOCS_DIR/REST-API.md" ]; then
     if command -v node >/dev/null 2>&1 && [ -f "tools/api-server.mjs" ]; then
         node tools/api-server.mjs demos/pf-web-polyglot-demo-plus-c/web 8082 > "$TEMP_DIR/api_server.log" 2>&1 &
         api_pid=$!
-        sleep 3
+        # Poll for server readiness (up to 15 seconds)
+        ready=0
+        for i in {1..15}; do
+            if curl -s "http://localhost:8082${api_endpoints%% *}" >/dev/null 2>&1; then
+                ready=1
+                break
+            fi
+            sleep 1
+        done
+        if [ "$ready" -ne 1 ]; then
+            log_fail "REST API documentation - Server did not start within timeout"
+            kill $api_pid 2>/dev/null || true
+            exit 1
+        fi
         
         missing_endpoints=()
         while IFS= read -r endpoint; do
