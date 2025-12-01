@@ -205,13 +205,14 @@ echo "=================================================================="
 log_suite "Running Error Handling Tests"
 
 # Test invalid Pfyfile handling
-echo "invalid syntax" > /tmp/invalid.pf
-if pf --file=/tmp/invalid.pf list 2>/dev/null; then
+INVALID_PF_FILE=$(mktemp)
+echo "invalid syntax" > "$INVALID_PF_FILE"
+if pf --file="$INVALID_PF_FILE" list 2>/dev/null; then
     log_suite_fail "Invalid Pfyfile handling - Should have failed"
 else
     log_suite_pass "Invalid Pfyfile handling - Correctly rejected"
 fi
-rm -f /tmp/invalid.pf
+rm -f "$INVALID_PF_FILE"
 
 # Test missing task handling
 if pf nonexistent-task 2>/dev/null; then
