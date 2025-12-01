@@ -141,11 +141,11 @@ if [ -f "$DOCS_DIR/TUI.md" ]; then
     tui_tasks=$(extract_doc_tasks "$DOCS_DIR/TUI.md")
     missing_tui_tasks=()
     
-    for task in $tui_tasks; do
-        if ! pf list | grep -q "^$task\s"; then
+    while IFS= read -r task; do
+        if [ -n "$task" ] && ! pf list | grep -q "^$task\s"; then
             missing_tui_tasks+=("$task")
         fi
-    done
+    done <<< "$tui_tasks"
     
     if [ ${#missing_tui_tasks[@]} -eq 0 ]; then
         log_pass "TUI documentation - All tasks exist"
