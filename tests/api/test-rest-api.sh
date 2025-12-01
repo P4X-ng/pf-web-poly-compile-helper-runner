@@ -127,17 +127,23 @@ test_http_endpoint() {
     
     log_test "$test_name"
     
-    local curl_cmd="curl -s -w '%{http_code}' -X $method"
-    
+    local body_file
+    body_file=$(mktemp)
+
+    local curl_opts=("-s" "-w" "%{http_code}" "-o" "$body_file" "-X" "$method")
+
     if [ -n "$data" ]; then
-        curl_cmd="$curl_cmd -H 'Content-Type: application/json' -d '$data'"
+        curl_opts+=("-H" "Content-Type: application/json" "-d" "$data")
     fi
-    
-    curl_cmd="$curl_cmd '$API_BASE$endpoint'"
-    
-    local response=$(eval "$curl_cmd")
-    local status_code="${response: -3}"
-    local body="${response%???}"
+
+    curl_opts+=("$API_BASE$endpoint")
+
+    local status_code
+    status_code=$(curl "${curl_opts[@]}")
+
+    local body
+    body=$(<"$body_file")
+    rm "$body_file"
     
     if [ "$status_code" = "$expected_status" ]; then
         if [ -n "$expected_content" ]; then
