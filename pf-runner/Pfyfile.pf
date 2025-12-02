@@ -4,6 +4,7 @@ include "Pfyfile.cleanup.pf"
 include ./Pfyfile.shells.pf
 include ./Pfyfile.build-helpers.pf
 include ./Pfyfile.tests.pf
+include ./Pfyfile.pasm.pf
 
 task default-task
   describe This is a task from the default Pfyfile.pf
