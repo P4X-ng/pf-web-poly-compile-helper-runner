@@ -111,14 +111,17 @@ class PRDiscovery {
             const remoteUrl = execSync('git remote get-url origin', { encoding: 'utf8' }).trim();
             
             let repo, platform;
-            if (remoteUrl.includes('github.com')) {
+            // Use strict regex patterns to match only legitimate domain URLs
+            // Matches: git@github.com:, https://github.com/, ssh://git@github.com/
+            const githubMatch = remoteUrl.match(/^(?:git@|https?:\/\/|ssh:\/\/(?:git@)?)github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/);
+            const gitlabMatch = remoteUrl.match(/^(?:git@|https?:\/\/|ssh:\/\/(?:git@)?)gitlab\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/);
+            
+            if (githubMatch) {
                 platform = 'github';
-                const match = remoteUrl.match(/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/);
-                repo = match ? match[1] : null;
-            } else if (remoteUrl.includes('gitlab.com')) {
+                repo = githubMatch[1];
+            } else if (gitlabMatch) {
                 platform = 'gitlab';
-                const match = remoteUrl.match(/gitlab\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/);
-                repo = match ? match[1] : null;
+                repo = gitlabMatch[1];
             }
             
             if (repo && platform) {
