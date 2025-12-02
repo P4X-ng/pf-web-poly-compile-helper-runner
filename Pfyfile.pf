@@ -18,6 +18,9 @@ include Pfyfile.security.pf
 # Include git cleanup tasks
 include Pfyfile.git-cleanup.pf
 
+# Include PR management tasks
+include Pfyfile.pr-management.pf
+
 # Include exploit development tasks
 include Pfyfile.exploit.pf
 # Include TUI tasks
