@@ -173,6 +173,16 @@ task dev-container-debug
   shell ./containers/scripts/run-dev.sh debug
 end
 
+# ==========================================
+# Container Testing Tasks
+# ==========================================
+
+task container-test
+  describe Run container infrastructure tests
+  shell_lang bash
+  shell ./containers/scripts/test-containers.sh
+end
+
 task dev-container-gpu
   describe Start GPU debugging container
   shell_lang bash
@@ -230,6 +240,9 @@ DEVELOPMENT:
   pf dev-container-build        Build WASM via containers
   pf dev-container-debug        Start debugger
   pf dev-container-gpu          Start GPU debugger
+
+TESTING:
+  pf container-test             Run container infrastructure tests
 
 DOCUMENTATION:
   See containers/README.md for full documentation
