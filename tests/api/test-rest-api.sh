@@ -58,7 +58,7 @@ log_info() {
 
 # Display server logs (last N lines) to aid debugging
 show_server_logs() {
-    local lines="${1:-20}"
+    local lines="${1:-30}"
     if [ -f "$TEMP_DIR/server.log" ]; then
         echo -e "${YELLOW}=== Server Log (last $lines lines) ===${NC}"
         tail -n "$lines" "$TEMP_DIR/server.log"
