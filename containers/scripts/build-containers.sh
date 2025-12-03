@@ -55,6 +55,7 @@ TARGETS:
     build     Build compilation images (Rust, C, Fortran)
     debug     Build debugger images (standard and GPU)
     os        Build OS distribution containers (CentOS, Fedora, Arch, openSUSE, macOS-like)
+    pe        Build PE execution containers (VMKit, ReactOS, macOS-QEMU)
 
 OPTIONS:
     --no-cache    Build without using cache
@@ -133,12 +134,20 @@ build_os_containers() {
     build_image "os-macos-like" "Dockerfile.os-macos-like"
 }
 
+build_pe_containers() {
+    log_info "=== Building PE Execution Containers ==="
+    build_image "pe-vmkit" "Dockerfile.pe-vmkit"
+    build_image "pe-reactos" "Dockerfile.pe-reactos"
+    build_image "macos-qemu" "Dockerfile.macos-qemu"
+}
+
 build_all() {
     build_base
     build_api
     build_builders
     build_debugger
     build_os_containers
+    build_pe_containers
 }
 
 # Main script
@@ -164,7 +173,7 @@ main() {
                 show_help
                 exit 0
                 ;;
-            all|base|api|build|debug|os)
+            all|base|api|build|debug|os|pe)
                 TARGETS+=("$1")
                 shift
                 ;;
@@ -207,6 +216,9 @@ main() {
                 ;;
             os)
                 build_os_containers
+                ;;
+            pe)
+                build_pe_containers
                 ;;
         esac
     done
