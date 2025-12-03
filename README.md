@@ -279,6 +279,34 @@ pf tui-help
 
 See [TUI Documentation](docs/TUI.md) for complete guide.
 
+### Package Manager Translation 📦
+Translate packages between the 5 most common Linux package formats using a hub-and-spoke model:
+- **Supported Formats**: deb (Debian/Ubuntu), rpm (Red Hat/Fedora), flatpak, snap, pacman (Arch)
+- **Hub Architecture**: All conversions go through .deb as the hub format
+- **Dependency Management**: Proper dependency resolution across formats
+- **Batch Conversion**: Convert multiple packages at once
+- **Cross-Distro**: Create packages for any distro from any source
+
+**Quick Start:**
+```bash
+# Check available formats
+pf pkg-formats
+
+# Convert RPM to DEB
+pf pkg-convert source=package.rpm target=deb
+
+# Convert Flatpak to RPM (via .deb hub)
+pf pkg-convert source=app.flatpak target=rpm
+
+# Get package info
+pf pkg-info package=myapp.deb
+
+# Show conversion matrix
+pf pkg-matrix
+```
+
+See [Package Manager Guide](docs/PACKAGE-MANAGER.md) for complete documentation.
+
 ### Testing & Development
 - **Live dev server**: Static HTTP server with CORS headers for WASM
 - **Playwright tests**: Automated browser testing for WASM modules
@@ -834,6 +862,7 @@ npx playwright show-report
 - **LLVM Lifting Guide**: See [`docs/LLVM-LIFTING.md`](docs/LLVM-LIFTING.md) for binary lifting documentation
 - **Kernel Debugging Guide**: See [`docs/KERNEL-DEBUGGING.md`](docs/KERNEL-DEBUGGING.md) for advanced debugging features
 - **Interactive TUI Guide**: See [`docs/TUI.md`](docs/TUI.md) for text user interface documentation
+- **Package Manager Guide**: See [`docs/PACKAGE-MANAGER.md`](docs/PACKAGE-MANAGER.md) for package format translation
 
 ### 🆕 Reverse Engineering Tools Roadmap
 - **Executive Summary**: See [`docs/RE-TOOLS-EXECUTIVE-SUMMARY.md`](docs/RE-TOOLS-EXECUTIVE-SUMMARY.md) - Quick overview of missing tools (start here!)
@@ -847,7 +876,6 @@ npx playwright show-report
 - **Debugging Guide**: See [`demos/debugging/README.md`](demos/debugging/README.md) for debugging and reverse engineering
 - **ROP Exploit Demo**: See [`demos/rop-exploit/README.md`](demos/rop-exploit/README.md) for ROP exploitation tutorial
 - **Git Cleanup Guide**: See [`docs/GIT-CLEANUP.md`](docs/GIT-CLEANUP.md) for removing large files from git history
->>>>>>> origin/main
 - **Web Demo Documentation**: See [`demos/pf-web-polyglot-demo-plus-c/README.md`](demos/pf-web-polyglot-demo-plus-c/README.md)
 - **WIT Components**: See [`pf/wit/README.md`](pf/wit/README.md)
 
@@ -1000,6 +1028,25 @@ Additional documentation in `pf-runner/`:
 | `pf security-check-auth [url=<url>]` | Check authentication/access control |
 | `pf security-report [url=<url>]` | Generate JSON security reports |
 | `pf security-help` | Show security testing help |
+
+| **Package Manager Translation** | |
+| `pf pkg-convert source=<pkg> target=<fmt>` | Convert package between formats (via .deb hub) |
+| `pf pkg-convert-to-deb source=<pkg>` | Convert any package to .deb |
+| `pf pkg-convert-to-rpm source=<pkg>` | Convert any package to .rpm |
+| `pf pkg-convert-to-flatpak source=<pkg>` | Convert any package to .flatpak |
+| `pf pkg-convert-to-snap source=<pkg>` | Convert any package to .snap |
+| `pf pkg-convert-to-pacman source=<pkg>` | Convert any package to .pkg.tar.zst |
+| `pf pkg-info package=<pkg>` | Display package information |
+| `pf pkg-deps package=<pkg> target=<fmt>` | Resolve dependencies for target format |
+| `pf pkg-formats` | Show available package formats |
+| `pf pkg-matrix` | Show conversion compatibility matrix |
+| `pf pkg-batch-convert packages=<pkgs> target=<fmt>` | Convert multiple packages |
+| `pf pkg-check-deps package=<pkg> target=<fmt>` | Check if dependencies are satisfied |
+| `pf pkg-install-deps package=<pkg> target=<fmt>` | Install missing dependencies |
+| `pf install-pkg-tools` | Install package conversion tools |
+| `pf install-flatpak` | Install Flatpak package manager |
+| `pf install-snap` | Install Snapd package manager |
+| `pf pkg-help` | Show package manager help |
 
 | **Installation & Setup** | |
 | `pf install-base` | Install base pf runner and dependencies |
