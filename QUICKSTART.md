@@ -24,12 +24,12 @@ A comprehensive guide to using the **pf** task runner with examples of all major
 
 ```bash
 # Quick install (recommended)
-./install.sh all
+./install.sh
 
-# Or install just the base runner
-./install.sh base
+# Choose runtime/image (optional)
+PF_IMAGE=pf-runner:latest ./install.sh --runtime podman
 
-# Manual installation
+# Manual host-only installation (legacy)
 pip install --user "fabric>=3.2,<4"
 cd pf-runner && make install-local
 ```

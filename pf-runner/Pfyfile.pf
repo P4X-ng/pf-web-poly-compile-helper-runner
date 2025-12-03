@@ -24,18 +24,18 @@ task setup-optional
 end
 
 task install-base
-  describe Install base pf runner, Python dependencies, and core build tools
-  shell cd .. && bash install.sh base
+  describe Build pf-runner container image and install pf wrapper
+  shell cd .. && bash install.sh
 end
 
 task install-web
-  describe Install web/WASM development tools (Node.js, Playwright, Rust, Emscripten, WABT)
-  shell cd .. && bash install.sh web
+  describe Build pf-runner container image and install pf wrapper for containerized web stack
+  shell cd .. && bash install.sh
 end
 
 task install
-  describe Install everything - base pf runner and all web/WASM development tools
-  shell cd .. && bash install.sh all
+  describe Build pf-runner container image and install pf wrapper
+  shell cd .. && bash install.sh
 end
 
 task ff3-dev

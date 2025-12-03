@@ -436,7 +436,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup pf
         run: |
-          ./install.sh base
+          ./install.sh --runtime docker
           pf install-pr-tools
       - name: Configure AI
         env:
@@ -456,7 +456,7 @@ jobs:
 pr-management:
   stage: maintenance
   script:
-    - ./install.sh base
+    - ./install.sh --runtime docker
     - pf install-pr-tools
     - pf pr-ai-config provider=openai api_key=$OPENAI_API_KEY
     - pf pr-discover

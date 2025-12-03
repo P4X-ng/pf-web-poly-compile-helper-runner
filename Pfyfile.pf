@@ -157,21 +157,18 @@ task web-build-c-llvm-opt
 end
 
 task install-base
-  describe Install base pf runner, Python dependencies, and core build tools
-  
-  shell bash install.sh base
+  describe Build pf-runner container image and install pf wrapper
+  shell bash install.sh
 end
 
 task install-web
-  describe Install web/WASM development tools (Node.js, Playwright, Rust, Emscripten, WABT)
-  
-  shell bash install.sh web
+  describe Build pf-runner container image and install pf wrapper for containerized web stack
+  shell bash install.sh
 end
 
 task install
-  describe Install everything - base pf runner and all web/WASM development tools
-  
-  shell bash install.sh all
+  describe Build pf-runner container image and install pf wrapper
+  shell bash install.sh
 end
 
 task install-exploit

@@ -289,23 +289,16 @@ See [TUI Documentation](docs/TUI.md) for complete guide.
 ### Minimum Requirements
 - Linux (Ubuntu/Debian recommended) or macOS
 - Git
-- Python 3.8+ with pip
-- sudo access (for system package installation)
+- Docker or Podman (for building/running the pf container)
 
-**Note:** The installer script (`./install.sh`) will automatically install most prerequisites. You only need Git and Python to get started.
+**Note:** The legacy host-based installer now lives in `bak/install-legacy.sh`. The default install path is container-first.
 
 ### Optional Prerequisites
-These will be installed automatically by the installer if you choose the "web" or "all" installation:
-
-- Node.js 18+ (for static server and Playwright tests)
-- Rust toolchain (for building Rust WASM modules)
-- Emscripten (for compiling C/C++ to WASM)
-- WABT (WebAssembly Binary Toolkit for WAT compilation)
-- LFortran (for Fortran WASM compilation - experimental)
+The container image already bundles the pf runtime; language toolchains are installed inside the containers defined under `containers/`.
 
 ## Installation
 
-### Recommended: One-Command Install
+### Recommended: Container Install
 
 The easiest way to get started:
 
@@ -314,50 +307,33 @@ The easiest way to get started:
 git clone <repository-url>
 cd pf-web-poly-compile-helper-runner
 
-# Run the installer (interactive mode)
+# Build the pf-runner image and install the wrapper
 ./install.sh
 
-# Or install everything directly
-./install.sh all
+# Pick a specific runtime/tag (optional)
+PF_IMAGE=pf-runner:latest ./install.sh --runtime podman
 ```
 
-The installer will:
-1. Install Python Fabric library (task runner framework)
-2. Set up the pf command-line tool
-3. Install shell completions (bash/zsh)
-4. Optionally install web/WASM development tools
-
-**Installation Modes:**
-
-- `./install.sh base` - Install just pf runner and core dependencies
-- `./install.sh web` - Install web/WASM development tools only
-- `./install.sh all` - Install everything (recommended)
-- `./install.sh --help` - Show detailed help
+What this does:
+1. Builds the base image `localhost/pf-base:latest` (from `containers/dockerfiles/Dockerfile.base`)
+2. Builds the `pf-runner` container image from `containers/dockerfiles/Dockerfile.pf-runner`
+3. Installs a tiny wrapper to `~/.local/bin/pf` that runs pf inside the container with your current directory mounted
 
 ### Using pf Tasks (After Initial Install)
 
 Once pf is installed, you can use these tasks:
 
 ```bash
-pf install-base  # Install/update base components
-pf install-web   # Install/update web tools
-pf install       # Install/update everything
+pf install       # Build pf-runner image + wrapper (default)
+pf install-web   # Alias to install (containerized web stack)
+pf install-base  # Alias to install (for compatibility)
 ```
 
 ### What Gets Installed?
 
-**Base Installation:**
-- Python Fabric library (`fabric>=3.2,<4`)
-- pf runner CLI tool (installed to `~/.local/bin/pf`)
-- Shell completions for bash and zsh
-- Core build tools (gcc, make, git)
-
-**Web Installation:**
-- Node.js and npm (if not present)
-- Playwright for browser testing
-- Rust toolchain with wasm-pack
-- WABT (WebAssembly Binary Toolkit)
-- Emscripten info (manual installation guidance)
+**Container-first install:**
+- `pf-runner` container image (includes pf CLI and deps)
+- `~/.local/bin/pf` wrapper that calls the container runtime
 - LFortran info (optional Fortran support)
 
 ## Quick Start
@@ -369,40 +345,36 @@ The repository includes a **comprehensive installer script** that sets up everyt
 #### One-Command Installation (Recommended)
 
 ```bash
-# Interactive installer - choose what to install
 ./install.sh
 
-# Or install everything directly
-./install.sh all
+# Choose runtime/image (optional)
+PF_IMAGE=pf-runner:latest ./install.sh --runtime podman
 ```
 
-The installer provides three installation modes:
-
-- **Base** (`./install.sh base`): Install pf runner, Python dependencies, and core build tools
-- **Web** (`./install.sh web`): Install web/WASM development tools (Node.js, Playwright, Rust, Emscripten, WABT)
-- **All** (`./install.sh all`): Install everything (recommended)
+The installer builds the `pf-runner` container image and writes a wrapper to `~/.local/bin/pf`
+that runs inside the container with your current directory mounted.
 
 #### Using pf Commands
 
 After initial installation, you can also use pf tasks:
 
 ```bash
-pf install-base  # Install base pf runner and dependencies
-pf install-web   # Install web/WASM development tools
-pf install       # Install everything
+pf install       # Build pf-runner image + wrapper (default)
+pf install-web   # Alias to install (containerized web stack)
+pf install-base  # Alias to install (for compatibility)
 ```
 
 #### Legacy Installation (Alternative)
 
-The older installation script is still available:
+The older host-based installation script is preserved for compatibility:
 
 ```bash
-./start.sh  # Legacy setup script
+./bak/install-legacy.sh  # Legacy host installer
 ```
 
 #### Manual Installation
 
-For manual control:
+For manual, host-only control (not containerized):
 
 ```bash
 cd pf-runner
@@ -1057,21 +1029,20 @@ Additional documentation in `pf-runner/`:
 ### Installation Issues
 
 #### pf command not found
-- Run `./install.sh base` to install pf-runner
-- Or run `source ~/.bashrc` to reload your shell configuration
+- Run `./install.sh` to rebuild the image and reinstall the wrapper
+- Run `source ~/.bashrc` (or `~/.zshrc`) to reload your shell configuration
 - Check that `~/.local/bin` is in your PATH
-- Legacy option: Run `./start.sh` to use the older installer
+- If you prefer the legacy host installer, use `bak/install-legacy.sh`
 
 #### Fabric import error
-- Ensure Fabric is installed: `pip install --user "fabric>=3.2,<4"`
-- Verify with: `python3 -c "import fabric; print(fabric.__version__)"`
-- Re-run: `./install.sh base`
+- This should not occur with the containerized wrapper. If running host-only,
+  install Fabric: `pip install --user "fabric>=3.2,<4"` and retry.
 
 #### Installation script fails
-- Check that you have sudo access for system packages
+- Ensure docker or podman is installed and running
 - Ensure internet connection is available
 - Review error messages for specific missing dependencies
-- Try manual installation steps from README
+- Try `./install.sh --runtime podman` if docker is unavailable
 
 ### WASM build failures
 - **Rust**: Ensure `wasm-pack` is installed: `cargo install wasm-pack`

@@ -10,5 +10,41 @@ SCRIPT_DIR="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 # Ensure repo root is on PYTHONPATH
 export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH:-}"
 
-# Use the central venv Python as requested
-exec /home/punk/.venv/bin/python "${SCRIPT_DIR}/pf_parser.py" "$@"
+# Pick the best available Python:
+# 1) PF_PY env override (explicit)
+# 2) Active virtualenv if present
+# 3) Python in PATH
+choose_python() {
+  if [[ -n "${PF_PY:-}" && -x "${PF_PY}" ]]; then
+    echo "${PF_PY}"
+    return
+  fi
+
+  if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python" ]]; then
+    echo "${VIRTUAL_ENV}/bin/python"
+    return
+  fi
+
+  if [[ -x "${SCRIPT_DIR}/.venv/bin/python" ]]; then
+    echo "${SCRIPT_DIR}/.venv/bin/python"
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    command -v python3
+    return
+  fi
+
+  if command -v python >/dev/null 2>&1; then
+    command -v python
+    return
+  fi
+}
+
+PY_BIN="$(choose_python)"
+if [[ -z "${PY_BIN}" ]]; then
+  echo "Error: python executable not found. Set PF_PY or activate a venv." >&2
+  exit 1
+fi
+
+exec "${PY_BIN}" "${SCRIPT_DIR}/pf_parser.py" "$@"

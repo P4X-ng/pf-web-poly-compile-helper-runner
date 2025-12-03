@@ -116,13 +116,13 @@ end
 # ============================================================================
 
 task install
-  describe Install web/WASM development tools (Node.js, Playwright, Rust, Emscripten, WABT)
+  describe Build pf-runner container image and install pf wrapper (web stack is containerized)
   shell_lang bash
-  shell bash install.sh web
+  shell bash install.sh
 end
 
 task install-all
-  describe Install everything - base pf runner and all web/WASM development tools
+  describe Build pf-runner container image and install pf wrapper
   shell_lang bash
-  shell bash install.sh all
+  shell bash install.sh
 end
