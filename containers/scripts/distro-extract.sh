@@ -31,20 +31,21 @@ detect_package_manager() {
 install_package() {
     local pkg_manager="$1"
     shift
-    local packages="$@"
+    # Use "$@" to properly handle packages as separate arguments
+    local -a packages=("$@")
 
     case "$pkg_manager" in
         dnf|yum)
-            sudo "$pkg_manager" install -y $packages
+            sudo "$pkg_manager" install -y "${packages[@]}"
             ;;
         pacman)
-            sudo pacman -S --noconfirm $packages
+            sudo pacman -S --noconfirm "${packages[@]}"
             ;;
         zypper)
-            sudo zypper --non-interactive install -y $packages
+            sudo zypper --non-interactive install -y "${packages[@]}"
             ;;
         apt)
-            sudo apt-get update && sudo apt-get install -y $packages
+            sudo apt-get update && sudo apt-get install -y "${packages[@]}"
             ;;
         *)
             echo "ERROR: Unknown package manager: $pkg_manager"

@@ -101,7 +101,7 @@ function detectSnapshotMethod() {
   
   // Check for zfs
   try {
-    execCommand('which zfs', { throwOnError: false, stdio: 'pipe' });
+    execCommand('which zfs', { throwOnError: false });
     const zpools = execCommand('zpool list -H', { throwOnError: false });
     if (zpools) {
       return 'zfs';
@@ -110,7 +110,7 @@ function detectSnapshotMethod() {
   
   // Fallback to rsync
   try {
-    execCommand('which rsync', { throwOnError: false, stdio: 'pipe' });
+    execCommand('which rsync', { throwOnError: false });
     return 'rsync';
   } catch {}
   
@@ -320,7 +320,7 @@ async function prepareTargetOS(targetOS, targetPartition) {
  */
 function checkKexecSupport() {
   try {
-    execCommand('which kexec', { throwOnError: false, stdio: 'pipe' });
+    execCommand('which kexec', { throwOnError: false });
     return true;
   } catch {
     return false;
@@ -497,7 +497,14 @@ function showStatus() {
   // Current OS info
   console.log(chalk.cyan('Current System:'));
   try {
-    console.log(`  OS:      ${execCommand('cat /etc/os-release | grep "^PRETTY_NAME" | cut -d= -f2 | tr -d \'"\'', { throwOnError: false }) || 'Unknown'}`);
+    // Read os-release directly in Node.js
+    let osName = 'Unknown';
+    try {
+      const osRelease = fs.readFileSync('/etc/os-release', 'utf-8');
+      const match = osRelease.match(/^PRETTY_NAME="?([^"\n]+)"?/m);
+      if (match) osName = match[1];
+    } catch {}
+    console.log(`  OS:      ${osName}`);
     console.log(`  Kernel:  ${execCommand('uname -r', { throwOnError: false })}`);
     console.log(`  Arch:    ${execCommand('uname -m', { throwOnError: false })}`);
   } catch {}
