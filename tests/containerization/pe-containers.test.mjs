@@ -340,7 +340,7 @@ end
 
     await tester.test('macOS-QEMU has exposed ports', async () => {
         const content = await tester.readFile(join(dockerfilesDir, 'Dockerfile.macos-qemu'));
-        if (!content.includes('EXPOSE 5901') || !content.includes('EXPOSE') && !content.includes('10022')) {
+        if (!content.includes('EXPOSE 5901') || !content.includes('10022')) {
             throw new Error('Dockerfile.macos-qemu missing EXPOSE ports');
         }
     });

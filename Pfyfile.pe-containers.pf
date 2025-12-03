@@ -265,19 +265,38 @@ task pe-setup-all
     echo "║         Setting up PE Execution Environments               ║"
     echo "╚════════════════════════════════════════════════════════════╝"
     echo ""
+    SETUP_ERRORS=0
+    
     echo "[1/4] Building containers..."
     pf pe-build-all
     echo ""
+    
     echo "[2/4] Setting up VMKit..."
-    pf pe-vmkit-setup || echo "VMKit setup skipped or failed"
+    if ! pf pe-vmkit-setup; then
+      echo "  ⚠ VMKit setup failed or was skipped"
+      SETUP_ERRORS=$((SETUP_ERRORS + 1))
+    fi
     echo ""
+    
     echo "[3/4] Setting up ReactOS..."
-    pf pe-reactos-setup || echo "ReactOS setup skipped or failed"
+    if ! pf pe-reactos-setup; then
+      echo "  ⚠ ReactOS setup failed or was skipped"
+      SETUP_ERRORS=$((SETUP_ERRORS + 1))
+    fi
     echo ""
+    
     echo "[4/4] Setting up macOS..."
-    pf macos-setup || echo "macOS setup skipped or failed"
+    if ! pf macos-setup; then
+      echo "  ⚠ macOS setup failed or was skipped"
+      SETUP_ERRORS=$((SETUP_ERRORS + 1))
+    fi
     echo ""
-    echo "Setup complete!"
+    
+    if [ $SETUP_ERRORS -gt 0 ]; then
+      echo "Setup completed with $SETUP_ERRORS warning(s)"
+    else
+      echo "Setup complete - all environments ready!"
+    fi
 end
 
 task pe-analyze-and-run pe="" env="reactos"

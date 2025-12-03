@@ -151,9 +151,13 @@ QEMU_ARGS="$QEMU_ARGS -machine q35,vmport=off"
 QEMU_ARGS="$QEMU_ARGS -m $MEMORY -smp cores=$CPUS,threads=1,sockets=1"
 
 # macOS requires specific SMC key (OSK)
-# The OSK is unique to Apple hardware - we use placeholder for structure only
-# Real usage requires legitimate Apple hardware/license
-QEMU_ARGS="$QEMU_ARGS -device isa-applesmc,osk=\"please-set-real-osk-key\""
+# ⚠️ WARNING: The OSK is a unique key embedded in Apple hardware.
+# This placeholder will NOT work for actual macOS execution.
+# Running macOS legally requires:
+#   1. Physical Apple hardware with the OSK, OR
+#   2. A valid macOS license and legitimate acquisition of the key
+# This container provides infrastructure only - not the ability to run macOS.
+QEMU_ARGS="$QEMU_ARGS -device isa-applesmc,osk=\"REPLACE-WITH-REAL-OSK-FROM-APPLE-HARDWARE\""
 
 # SMBIOS - emulate Mac hardware
 QEMU_ARGS="$QEMU_ARGS -smbios type=2"
