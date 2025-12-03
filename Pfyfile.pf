@@ -40,6 +40,8 @@ include Pfyfile.os-containers.pf
 
 # Include OS switching tasks (DANGEROUS)
 include Pfyfile.os-switching.pf
+# Include distro container and OS switching tasks
+include Pfyfile.distro-switch.pf
 
 task web-dev
   describe Start development server with REST API support
