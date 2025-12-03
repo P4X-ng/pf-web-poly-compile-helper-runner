@@ -32,6 +32,9 @@ include Pfyfile.debug-tools.pf
 # Include container and quadlet tasks
 include Pfyfile.containers.pf
 
+# Include package manager translation tasks
+include Pfyfile.package-manager.pf
+
 task web-dev
   describe Start development server with REST API support
   shell_lang bash

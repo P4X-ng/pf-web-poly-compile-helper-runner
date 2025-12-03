@@ -59,6 +59,11 @@ const testSuites = [
         name: 'Security Tools Tests',
         file: 'security-tools.test.mjs',
         description: 'Tests security tool integrations'
+    },
+    {
+        name: 'Package Manager Tests',
+        file: 'package-manager/package-manager.test.mjs',
+        description: 'Tests package format translation tool'
     }
 ];
 
