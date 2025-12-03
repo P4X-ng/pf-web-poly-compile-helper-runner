@@ -45,16 +45,18 @@ def _find_pfyfile(
             return file_arg
         return os.path.abspath(file_arg)
 
-    pf_hint = os.environ.get("PFY_FILE", "Pfyfile.pf")
+    # Allow empty env to fall back to default
+    pf_hint = os.environ.get("PFY_FILE") or "Pfyfile.pf"
     if os.path.isabs(pf_hint):
         return pf_hint
     cur = os.path.abspath(start_dir or os.getcwd())
     while True:
         candidate = os.path.join(cur, pf_hint)
-        if os.path.exists(candidate):
+        if os.path.isfile(candidate):
             return candidate
         parent = os.path.dirname(cur)
         if parent == cur:
+            # Last resort: current working directory + default hint
             return os.path.join(os.getcwd(), pf_hint)
         cur = parent
 
@@ -998,6 +1000,10 @@ def _exec_line_fabric(
 
     # 'env' is handled in the runner loop (stateful), so treat as no-op here
     if op == "env":
+        return 0
+
+    # tolerate non-executable hints used in some Pfyfiles
+    if op in ("shell_lang", "lang"):
         return 0
 
     # ---------- Build System Helpers ----------

@@ -151,6 +151,49 @@ task quadlet-logs
   shell journalctl --user -u ${service:-pf-api-server} -f
 end
 
+task quadlet-enable
+  describe Enable quadlet services at login (tries common units)
+  shell_lang bash
+  shell systemctl --user enable pf-api-server || true
+  shell systemctl --user enable pf-web-api-pod || true
+end
+
+task quadlet-enable-all
+  describe Enable and start the pf-suite.target (groups all pf units)
+  shell_lang bash
+  shell systemctl --user enable --now pf-suite.target || (echo "pf-suite.target missing — run: pf quadlet-install" && exit 1)
+end
+
+task quadlet-doctor
+  describe Diagnose quadlet + podman + systemd-user environment
+  shell_lang bash
+  shell ./containers/scripts/quadlet-doctor.sh
+end
+
+task quadlet-restart-all
+  describe Restart all pf services (from quadlets)
+  shell_lang bash
+  shell ./containers/scripts/quadlet-manage.sh restart-all
+end
+
+task quadlet-disable-all
+  describe Disable pf-suite.target and all pf services
+  shell_lang bash
+  shell ./containers/scripts/quadlet-manage.sh disable-all
+end
+
+task quadlet-stop-all
+  describe Stop all pf services
+  shell_lang bash
+  shell ./containers/scripts/quadlet-manage.sh stop-all
+end
+
+task quadlet-status-all
+  describe Show status for all pf units (service/target)
+  shell_lang bash
+  shell ./containers/scripts/quadlet-manage.sh status-all
+end
+
 # ==========================================
 # Development Workflow Tasks
 # ==========================================

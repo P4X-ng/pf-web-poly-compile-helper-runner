@@ -171,6 +171,42 @@ task install
   shell bash install.sh
 end
 
+task install-full mode=container runtime=podman
+  describe Full setup (container-first): build images, install wrapper, install/enable quadlets, doctor
+  # Build images (container-first default). Users can override with mode=native to skip containers.
+  shell if [ "${mode:-container}" = "container" ]; then CONTAINER_RT=${runtime:-podman} ./containers/scripts/build-containers.sh all; else echo "[install-full] native mode: skipping container builds"; fi
+  # Install pf wrapper
+shell if [ "${mode:-container}" = "container" ]; then pf install; else ./containers/scripts/install-native.sh || { echo "native install failed"; exit 1; }; fi
+  # Quadlets (only meaningful in container mode)
+  shell if [ "${mode:-container}" = "container" ]; then pf quadlet-install; else true; fi
+  shell if [ "${mode:-container}" = "container" ]; then pf quadlet-reload; else true; fi
+  shell if [ "${mode:-container}" = "container" ]; then pf quadlet-enable-all; else true; fi
+  shell if [ "${mode:-container}" = "container" ]; then pf quadlet-status-all; else true; fi
+  # Doctor at the end
+  shell pf quadlet-doctor
+end
+
+# Back-compat alias
+task install-all
+  describe Alias for install-full (container-first)
+  shell pf install-full
+end
+
+task install-all-min
+  describe Install wrapper and quadlets only (no image build)
+  shell pf install
+  shell pf quadlet-install
+  shell pf quadlet-reload
+  shell pf quadlet-enable
+end
+
+task debug-check-podman
+  describe Show podman visibility from inside pf container
+  shell command -v podman || echo "podman not in PATH"
+  shell ls -l /usr/bin/podman || true
+  shell env | grep -E 'XDG_RUNTIME_DIR|CONTAINER_HOST' || true
+end
+
 task install-exploit
   describe Install exploit development tools (pwntools, checksec, ROPgadget, ropper)
   

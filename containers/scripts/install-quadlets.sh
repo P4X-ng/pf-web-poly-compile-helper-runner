@@ -85,6 +85,12 @@ check_podman_quadlet() {
         exit 1
     fi
     
+    # If running as root inside a container and targeting /etc, warn about host/systemd integration
+    if [[ $EUID -eq 0 ]] && { [[ -f /.dockerenv ]] || [[ -f /run/.containerenv ]]; }; then
+        log_warn "Running inside a container as root; installing to /etc/containers/systemd won't affect the host systemd."
+        log_warn "Prefer user install (non-root → ~/.config/containers/systemd) or run this script on the host: sudo $0 --install"
+    fi
+    
     # Check Podman version for quadlet support (4.4+)
     local version=$(podman --version | grep -oP '\d+\.\d+' | head -1)
     local major=$(echo "$version" | cut -d. -f1)
@@ -121,7 +127,16 @@ install_quadlets() {
     
     # Copy quadlet files
     local count=0
-    for file in "${QUADLET_SRC}"/*.{container,pod,network,volume,kube,image} 2>/dev/null; do
+    # Expand patterns individually; avoid redirection in for-word list for portability
+    shopt -s nullglob
+    for file in \
+        "${QUADLET_SRC}"/*.container \
+        "${QUADLET_SRC}"/*.pod \
+        "${QUADLET_SRC}"/*.network \
+        "${QUADLET_SRC}"/*.volume \
+        "${QUADLET_SRC}"/*.kube \
+        "${QUADLET_SRC}"/*.image \
+        "${QUADLET_SRC}"/*.target; do
         if [[ -f "$file" ]]; then
             local basename=$(basename "$file")
             log_info "Installing ${basename}"
@@ -129,17 +144,48 @@ install_quadlets() {
             ((count++))
         fi
     done
-    
+
+    # Generate pf-suite.target dynamically (Wants= for all *.container and *.pod)
+    local wants_units=()
+    for file in "${QUADLET_SRC}"/*.container "${QUADLET_SRC}"/*.pod; do
+        [[ -f "$file" ]] || continue
+        local base
+        base=$(basename "$file")
+        local unit="${base%.*}.service"
+        wants_units+=("$unit")
+    done
+    if [[ ${#wants_units[@]} -gt 0 ]]; then
+        local target_path="${QUADLET_DEST}/pf-suite.target"
+        log_info "Generating pf-suite.target at ${target_path}"
+        cat >"${target_path}" <<EOF
+[Unit]
+Description=pf suite target (group all pf units)
+Wants=${wants_units[*]}
+After=default.target
+
+[Install]
+WantedBy=default.target
+EOF
+        ((count++))
+    fi
+    shopt -u nullglob
+
     if [[ $count -eq 0 ]]; then
         log_warn "No quadlet files found in ${QUADLET_SRC}"
         return 1
     fi
-    
-    log_success "Installed ${count} quadlet files"
-    
-    # Reload systemd
+
+    log_success "Installed ${count} quadlet files (including generated pf-suite.target if applicable)"
+
+    # Reload systemd (best-effort; don't fail the whole install if unavailable)
     log_info "Reloading systemd daemon..."
+    set +e
     ${SYSTEMCTL_CMD} daemon-reload
+    rc=$?
+    set -e
+    if [[ $rc -ne 0 ]]; then
+        log_warn "daemon-reload failed (running inside a container or no user systemd?). Run on host: '${SYSTEMCTL_CMD} daemon-reload'"
+    fi
     
     log_success "Quadlets installed successfully!"
     log_info ""
@@ -168,7 +214,15 @@ remove_quadlets() {
     
     # Remove quadlet files
     local count=0
-    for file in "${QUADLET_DEST}"/pf-*.{container,pod,network,volume,kube,image} 2>/dev/null; do
+    shopt -s nullglob
+    for file in \
+        "${QUADLET_DEST}"/pf-*.container \
+        "${QUADLET_DEST}"/pf-*.pod \
+        "${QUADLET_DEST}"/pf-*.network \
+        "${QUADLET_DEST}"/pf-*.volume \
+        "${QUADLET_DEST}"/pf-*.kube \
+        "${QUADLET_DEST}"/pf-*.image \
+        "${QUADLET_DEST}"/pf-*.target; do
         if [[ -f "$file" ]]; then
             local basename=$(basename "$file")
             log_info "Removing ${basename}"
@@ -176,6 +230,7 @@ remove_quadlets() {
             ((count++))
         fi
     done
+    shopt -u nullglob
     
     # Reload systemd
     ${SYSTEMCTL_CMD} daemon-reload
@@ -187,8 +242,17 @@ list_quadlets() {
     log_info "Installed quadlet files in ${QUADLET_DEST}:"
     
     if [[ -d "${QUADLET_DEST}" ]]; then
-        ls -la "${QUADLET_DEST}"/pf-*.{container,pod,network,volume,kube,image} 2>/dev/null || \
-            log_warn "No pf-* quadlet files found"
+        shopt -s nullglob
+        ls -la \
+            "${QUADLET_DEST}"/pf-*.container \
+            "${QUADLET_DEST}"/pf-*.pod \
+            "${QUADLET_DEST}"/pf-*.network \
+            "${QUADLET_DEST}"/pf-*.volume \
+            "${QUADLET_DEST}"/pf-*.kube \
+            "${QUADLET_DEST}"/pf-*.image \
+            "${QUADLET_DEST}"/pf-*.target \
+            || log_warn "No pf-* quadlet files found"
+        shopt -u nullglob
     else
         log_warn "Quadlet directory does not exist"
     fi
