@@ -1421,6 +1421,492 @@ echo "==> Build completed successfully with $BUILD_SYSTEM"
 """
         return run(autobuild_script)
 
+    if op == "autobuild_retry" or op == "auto_build_retry":
+        # Enhanced automagic builder with retry and error pattern matching
+        # Supports all autobuild build systems with exponential backoff retry
+        # Parameters: dir=<path>, jobs=<N>, release=<true/false>, target=<target>
+        #            max_retries=<N>, initial_delay=<seconds>, max_delay=<seconds>
+
+        pos, kv = _split_kv(args)
+        target_dir = kv.get("dir", ".")
+        jobs = kv.get("jobs", "4")
+        is_release = kv.get("release", "").lower() in ("true", "yes", "1")
+        custom_target = kv.get("target", "")
+        max_retries = kv.get("max_retries", "3")
+        initial_delay = kv.get("initial_delay", "1")
+        max_delay = kv.get("max_delay", "30")
+
+        autobuild_retry_script = f"""
+set -e
+
+# Retry configuration
+MAX_RETRIES={max_retries}
+INITIAL_DELAY={initial_delay}
+MAX_DELAY={max_delay}
+CURRENT_DELAY=$INITIAL_DELAY
+ATTEMPT=0
+
+# Error patterns and fixes (pattern|fix_command)
+declare -A ERROR_FIXES
+ERROR_FIXES["E: Unable to locate package"]="apt-get update"
+ERROR_FIXES["ModuleNotFoundError"]="pip install --upgrade pip setuptools wheel"
+ERROR_FIXES["Cannot find module"]="npm install"
+ERROR_FIXES["Permission denied"]="chmod -R 755 ."
+ERROR_FIXES["EACCES"]="chmod -R 755 ."
+ERROR_FIXES["no Cargo.lock"]="cargo generate-lockfile"
+ERROR_FIXES["Cargo.lock.*not found"]="cargo generate-lockfile"
+ERROR_FIXES["go.mod.*not found"]="go mod init app"
+ERROR_FIXES["missing go.sum"]="go mod tidy"
+ERROR_FIXES["network is unreachable"]="sleep 5"
+ERROR_FIXES["timeout"]="sleep 5"
+ERROR_FIXES["ETIMEDOUT"]="sleep 5"
+ERROR_FIXES["ECONNRESET"]="sleep 5"
+
+cd {shlex.quote(target_dir)}
+
+# Function to detect build system
+detect_build_system() {{
+    if [ -f Cargo.toml ]; then echo "cargo"; return; fi
+    if [ -f go.mod ]; then echo "go"; return; fi
+    if [ -f package.json ]; then echo "npm"; return; fi
+    if [ -f setup.py ] || [ -f pyproject.toml ]; then echo "python"; return; fi
+    if [ -f pom.xml ]; then echo "maven"; return; fi
+    if [ -f build.gradle ] || [ -f build.gradle.kts ]; then echo "gradle"; return; fi
+    if [ -f CMakeLists.txt ]; then echo "cmake"; return; fi
+    if [ -f meson.build ]; then echo "meson"; return; fi
+    if [ -f justfile ] || [ -f Justfile ]; then echo "just"; return; fi
+    if [ -f configure ] || [ -f configure.ac ]; then echo "autotools"; return; fi
+    if [ -f Makefile ] || [ -f makefile ] || [ -f GNUmakefile ]; then echo "make"; return; fi
+    if [ -f build.ninja ]; then echo "ninja"; return; fi
+    echo "unknown"
+}}
+
+# Function to run build command for a given system
+run_build() {{
+    local BUILD_SYSTEM="$1"
+    
+    case "$BUILD_SYSTEM" in
+        cargo)
+            if [ "{is_release}" = "True" ]; then
+                cargo build --release
+            else
+                cargo build
+            fi
+            ;;
+        go)
+            if [ -n "{custom_target}" ]; then
+                go build -o {shlex.quote(custom_target)}
+            else
+                go build
+            fi
+            ;;
+        npm)
+            if grep -q '"build"' package.json 2>/dev/null; then
+                npm run build
+            else
+                npm install
+            fi
+            ;;
+        python)
+            if [ -f pyproject.toml ]; then
+                pip install -e .
+            elif [ -f setup.py ]; then
+                python setup.py build
+            fi
+            ;;
+        maven)
+            mvn compile
+            ;;
+        gradle)
+            if [ -x ./gradlew ]; then
+                ./gradlew build
+            else
+                gradle build
+            fi
+            ;;
+        cmake)
+            local BUILD_DIR="build"
+            local BUILD_TYPE="Release"
+            if [ "{is_release}" = "False" ]; then
+                BUILD_TYPE="Debug"
+            fi
+            cmake -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+            cmake --build "$BUILD_DIR" -j {jobs}
+            ;;
+        meson)
+            local BUILD_DIR="builddir"
+            local BUILDTYPE="release"
+            if [ "{is_release}" = "False" ]; then
+                BUILDTYPE="debug"
+            fi
+            if [ ! -d "$BUILD_DIR" ]; then
+                meson setup "$BUILD_DIR" --buildtype="$BUILDTYPE"
+            fi
+            meson compile -C "$BUILD_DIR" -j {jobs}
+            ;;
+        make)
+            local TARGET="{custom_target if custom_target else 'all'}"
+            make $TARGET -j{jobs}
+            ;;
+        just)
+            if [ -n "{custom_target}" ]; then
+                just {shlex.quote(custom_target)}
+            else
+                just
+            fi
+            ;;
+        autotools)
+            if [ ! -f config.status ]; then
+                ./configure
+            fi
+            make -j{jobs}
+            ;;
+        ninja)
+            ninja -j{jobs}
+            ;;
+        *)
+            echo "✗ Error: Unknown build system: $BUILD_SYSTEM"
+            return 1
+            ;;
+    esac
+}}
+
+# Function to try to fix an error based on patterns
+try_fix_error() {{
+    local ERROR_OUTPUT="$1"
+    
+    for pattern in "${{!ERROR_FIXES[@]}}"; do
+        if echo "$ERROR_OUTPUT" | grep -qE "$pattern"; then
+            local FIX="${{ERROR_FIXES[$pattern]}}"
+            echo "  → Applying fix: $FIX"
+            eval "$FIX" 2>/dev/null || true
+            return 0
+        fi
+    done
+    
+    return 1
+}}
+
+# Main retry loop
+echo "==> Automagic Builder with Retry: Detecting build system..."
+BUILD_SYSTEM=$(detect_build_system)
+
+if [ "$BUILD_SYSTEM" = "unknown" ]; then
+    echo "✗ Error: No build system detected in $(pwd)"
+    echo "Supported: Cargo.toml, go.mod, package.json, CMakeLists.txt, Makefile, meson.build, etc."
+    exit 1
+fi
+
+echo "✓ Detected: $BUILD_SYSTEM"
+echo "==> Building with $BUILD_SYSTEM (max $MAX_RETRIES retries)..."
+
+while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+    ATTEMPT=$((ATTEMPT + 1))
+    echo ""
+    echo "==> Attempt $ATTEMPT of $MAX_RETRIES"
+    
+    # Capture build output
+    BUILD_OUTPUT=$(mktemp)
+    
+    if run_build "$BUILD_SYSTEM" 2>&1 | tee "$BUILD_OUTPUT"; then
+        echo ""
+        echo "==> Build completed successfully with $BUILD_SYSTEM on attempt $ATTEMPT"
+        rm -f "$BUILD_OUTPUT"
+        exit 0
+    fi
+    
+    # Build failed - check if we can fix it
+    ERROR_TEXT=$(cat "$BUILD_OUTPUT")
+    rm -f "$BUILD_OUTPUT"
+    
+    if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+        echo ""
+        echo "⚠ Build failed on attempt $ATTEMPT"
+        
+        # Try to apply a fix
+        if try_fix_error "$ERROR_TEXT"; then
+            echo "  → Fix applied, retrying in $CURRENT_DELAY seconds..."
+        else
+            echo "  → No specific fix found, retrying in $CURRENT_DELAY seconds..."
+        fi
+        
+        sleep $CURRENT_DELAY
+        
+        # Exponential backoff
+        CURRENT_DELAY=$((CURRENT_DELAY * 2))
+        if [ $CURRENT_DELAY -gt $MAX_DELAY ]; then
+            CURRENT_DELAY=$MAX_DELAY
+        fi
+    fi
+done
+
+echo ""
+echo "✗ Build failed after $MAX_RETRIES attempts"
+exit 1
+"""
+        return run(autobuild_retry_script)
+
+    if op == "containerize" or op == "auto_container":
+        # Automatic containerization - detect project and generate Dockerfile/Quadlet
+        # Parameters: dir=<path>, image=<name>, tag=<tag>, port=<N>
+        #            install_deps=<pkgs>, main_bin=<binary>, base_image=<image>
+        #            dockerfile_only=<true/false>, quadlet_only=<true/false>
+
+        pos, kv = _split_kv(args)
+        target_dir = kv.get("dir", ".")
+        image_name = kv.get("image", "")
+        tag = kv.get("tag", "latest")
+        port_hint = kv.get("port", "")
+        install_deps = kv.get("install_deps", "")
+        main_bin = kv.get("main_bin", "")
+        base_image = kv.get("base_image", "")
+        dockerfile_only = kv.get("dockerfile_only", "").lower() in ("true", "yes", "1")
+        quadlet_only = kv.get("quadlet_only", "").lower() in ("true", "yes", "1")
+
+        # Build the containerize command
+        containerize_script = f"""
+set -e
+
+cd {shlex.quote(target_dir)}
+
+# Get absolute path
+PROJECT_PATH=$(pwd)
+PROJECT_NAME=$(basename "$PROJECT_PATH" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+
+# Default image name
+IMAGE_NAME="{image_name}"
+if [ -z "$IMAGE_NAME" ]; then
+    IMAGE_NAME="localhost/$PROJECT_NAME"
+fi
+
+TAG="{tag}"
+FULL_IMAGE="$IMAGE_NAME:$TAG"
+
+echo "==> pf Containerize: Automatic containerization"
+echo "    Project: $PROJECT_PATH"
+echo "    Image: $FULL_IMAGE"
+
+# Check if pf_containerize.py exists
+PF_RUNNER_DIR="$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")"
+CONTAINERIZE_SCRIPT="$PF_RUNNER_DIR/pf_containerize.py"
+
+# Try to find pf_containerize.py in common locations
+if [ ! -f "$CONTAINERIZE_SCRIPT" ]; then
+    for try_path in "./pf-runner/pf_containerize.py" "../pf-runner/pf_containerize.py" "/app/pf-runner/pf_containerize.py"; do
+        if [ -f "$try_path" ]; then
+            CONTAINERIZE_SCRIPT="$try_path"
+            break
+        fi
+    done
+fi
+
+if [ -f "$CONTAINERIZE_SCRIPT" ]; then
+    # Use the Python containerization module
+    ARGS="$PROJECT_PATH"
+    ARGS="$ARGS --image-name=$IMAGE_NAME"
+    ARGS="$ARGS --tag=$TAG"
+    
+    if [ -n "{install_deps}" ]; then
+        ARGS="$ARGS --install-hint-deps='{install_deps}'"
+    fi
+    if [ -n "{main_bin}" ]; then
+        ARGS="$ARGS --main-bin-hint='{main_bin}'"
+    fi
+    if [ -n "{port_hint}" ]; then
+        ARGS="$ARGS --port-hint={port_hint}"
+    fi
+    if [ -n "{base_image}" ]; then
+        ARGS="$ARGS --base-image-hint='{base_image}'"
+    fi
+    if [ "{dockerfile_only}" = "True" ]; then
+        ARGS="$ARGS --dockerfile-only"
+    fi
+    if [ "{quadlet_only}" = "True" ]; then
+        ARGS="$ARGS --quadlet-only"
+    fi
+    
+    eval "python3 $CONTAINERIZE_SCRIPT $ARGS"
+else
+    # Fallback: Basic inline containerization
+    echo "==> Using basic inline containerization (pf_containerize.py not found)"
+    
+    # Detect project type
+    PROJECT_TYPE="unknown"
+    BASE_IMAGE="ubuntu:24.04"
+    BUILD_CMDS=""
+    RUN_CMD=""
+    
+    if [ -f Cargo.toml ]; then
+        PROJECT_TYPE="rust"
+        BASE_IMAGE="rust:1-slim"
+        BUILD_CMDS="cargo build --release"
+        BIN_NAME=$(grep -m1 'name' Cargo.toml | sed 's/.*=\\s*"\\([^"]*\\)".*/\\1/' || echo "app")
+        RUN_CMD="./target/release/$BIN_NAME"
+    elif [ -f go.mod ]; then
+        PROJECT_TYPE="go"
+        BASE_IMAGE="golang:1.22-bookworm"
+        BUILD_CMDS="go build -o /app/main ."
+        RUN_CMD="/app/main"
+    elif [ -f package.json ]; then
+        PROJECT_TYPE="node"
+        BASE_IMAGE="node:20-slim"
+        BUILD_CMDS="npm install"
+        if grep -q '"build"' package.json 2>/dev/null; then
+            BUILD_CMDS="npm install && npm run build"
+        fi
+        RUN_CMD="npm start"
+    elif [ -f requirements.txt ] || [ -f setup.py ] || [ -f pyproject.toml ]; then
+        PROJECT_TYPE="python"
+        BASE_IMAGE="python:3.12-slim"
+        if [ -f requirements.txt ]; then
+            BUILD_CMDS="pip install -r requirements.txt"
+        else
+            BUILD_CMDS="pip install -e ."
+        fi
+        RUN_CMD="python main.py"
+    elif [ -f CMakeLists.txt ]; then
+        PROJECT_TYPE="cmake"
+        BASE_IMAGE="ubuntu:24.04"
+        BUILD_CMDS="apt-get update && apt-get install -y build-essential cmake && cmake -B build && cmake --build build"
+        RUN_CMD="./build/main"
+    elif [ -f Makefile ]; then
+        PROJECT_TYPE="make"
+        BASE_IMAGE="ubuntu:24.04"
+        BUILD_CMDS="apt-get update && apt-get install -y build-essential && make"
+        RUN_CMD="./main"
+    fi
+    
+    # Override with hints
+    if [ -n "{base_image}" ]; then
+        BASE_IMAGE="{base_image}"
+    fi
+    if [ -n "{main_bin}" ]; then
+        RUN_CMD="{main_bin}"
+    fi
+    
+    echo "✓ Detected: $PROJECT_TYPE project"
+    echo "  Base image: $BASE_IMAGE"
+    
+    # Generate Dockerfile
+    DOCKERFILE="Dockerfile.pf-generated"
+    
+    cat > "$DOCKERFILE" << 'DOCKERFILE_EOF'
+FROM $BASE_IMAGE
+
+LABEL maintainer="pf-containerize"
+LABEL generator="pf-web-poly-compile-helper-runner"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+WORKDIR /app
+
+COPY . .
+
+DOCKERFILE_EOF
+
+    # Add install_deps if specified
+    if [ -n "{install_deps}" ]; then
+        echo "RUN {install_deps}" >> "$DOCKERFILE"
+    fi
+    
+    # Add build commands
+    if [ -n "$BUILD_CMDS" ]; then
+        echo "RUN $BUILD_CMDS" >> "$DOCKERFILE"
+    fi
+    
+    # Add port if specified
+    if [ -n "{port_hint}" ]; then
+        echo "EXPOSE {port_hint}" >> "$DOCKERFILE"
+    fi
+    
+    # Add run command
+    if [ -n "$RUN_CMD" ]; then
+        echo "CMD [\\"$RUN_CMD\\"]" >> "$DOCKERFILE"
+    fi
+    
+    # Replace variables in Dockerfile
+    sed -i "s|\\$BASE_IMAGE|$BASE_IMAGE|g" "$DOCKERFILE"
+    
+    echo ""
+    echo "==> Generated Dockerfile:"
+    cat "$DOCKERFILE"
+    
+    if [ "{dockerfile_only}" = "True" ]; then
+        echo ""
+        echo "✓ Dockerfile generated: $DOCKERFILE"
+        exit 0
+    fi
+    
+    # Build the container
+    echo ""
+    echo "==> Building container image..."
+    
+    # Prefer podman, fallback to docker
+    if command -v podman &> /dev/null; then
+        CONTAINER_RT="podman"
+    elif command -v docker &> /dev/null; then
+        CONTAINER_RT="docker"
+    else
+        echo "✗ Error: Neither podman nor docker found"
+        exit 1
+    fi
+    
+    $CONTAINER_RT build -t "$FULL_IMAGE" -f "$DOCKERFILE" .
+    
+    echo ""
+    echo "✓ Container image built: $FULL_IMAGE"
+    
+    # Generate Quadlet file
+    if [ "{quadlet_only}" != "True" ]; then
+        QUADLET_FILE="$PROJECT_NAME.container"
+        cat > "$QUADLET_FILE" << QUADLET_EOF
+[Unit]
+Description=$PROJECT_NAME container service
+Documentation=https://github.com/containers/podman/blob/main/docs/source/markdown/podman-systemd.unit.5.md
+
+[Container]
+ContainerName=$PROJECT_NAME
+Image=$FULL_IMAGE
+
+Volume=$PROJECT_NAME-data:/app/data:rw,z
+
+QUADLET_EOF
+
+        if [ -n "{port_hint}" ]; then
+            echo "PublishPort={port_hint}:{port_hint}" >> "$QUADLET_FILE"
+        fi
+        
+        cat >> "$QUADLET_FILE" << QUADLET_EOF
+
+Environment=TZ=UTC
+
+NoNewPrivileges=true
+
+Memory=512m
+CPUQuota=100%
+
+Label=app=$PROJECT_NAME
+Label=generator=pf-containerize
+
+Restart=always
+
+[Install]
+WantedBy=default.target
+QUADLET_EOF
+
+        echo "✓ Quadlet file generated: $QUADLET_FILE"
+    fi
+    
+    # Clean up
+    rm -f "$DOCKERFILE"
+fi
+
+echo ""
+echo "==> Containerization complete!"
+"""
+        return run(containerize_script)
+
     if op == "sync":
         # sync src=<path> dest=<path> [host=<host>] [user=<user>] [port=<port>]
         #      [excludes=["pattern1","pattern2"]] [exclude_file=<path>]
@@ -1525,8 +2011,17 @@ BUILTINS: Dict[str, List[str]] = {
     "autobuild": [
         "autobuild",
     ],
+    "autobuild-retry": [
+        "autobuild_retry",
+    ],
     "build_detect": [
         "build_detect",
+    ],
+    "containerize": [
+        "containerize",
+    ],
+    "auto-container": [
+        "containerize",
     ],
 }
 
