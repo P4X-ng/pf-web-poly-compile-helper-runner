@@ -36,6 +36,11 @@ const testSuites = [
         description: 'Tests build system integrations'
     },
     {
+        name: 'Containerization Tests',
+        file: 'containerization/containerization.test.mjs',
+        description: 'Tests automatic containerization and Quadlet generation'
+    },
+    {
         name: 'Sync & Ops Tests',
         file: 'debugging/sync-ops.test.mjs',
         description: 'Tests sync, service, and package operations'

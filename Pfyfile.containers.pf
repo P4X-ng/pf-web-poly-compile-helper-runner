@@ -196,6 +196,51 @@ task dev-container-status
 end
 
 # ==========================================
+# Automatic Containerization Tasks
+# ==========================================
+
+task auto-containerize
+  describe Automatically containerize the current project
+  containerize
+end
+
+task auto-containerize-dir dir=""
+  describe Containerize a project in a specific directory
+  containerize dir=$dir
+end
+
+task auto-containerize-hints dir="" install_deps="" main_bin="" port=""
+  describe Containerize with hints for dependencies, main binary, and port
+  containerize dir=$dir install_deps=$install_deps main_bin=$main_bin port=$port
+end
+
+task generate-dockerfile
+  describe Generate a Dockerfile for the current project (no build)
+  containerize dockerfile_only=true
+end
+
+task generate-quadlet image=""
+  describe Generate Quadlet files for systemd integration
+  containerize quadlet_only=true image=$image
+end
+
+task auto-build-with-retry
+  describe Build the project with automatic retry on failures
+  autobuild_retry max_retries=3
+end
+
+task auto-build-retry-robust
+  describe Build with more aggressive retry settings
+  autobuild_retry max_retries=5 initial_delay=2 max_delay=60
+end
+
+task ci-containerize image="" tag="latest"
+  describe Full CI pipeline: build with retry, then containerize
+  autobuild_retry max_retries=3
+  containerize image=$image tag=$tag
+end
+
+# ==========================================
 # Help Task
 # ==========================================
 
@@ -214,6 +259,16 @@ BUILD COMMANDS:
   pf container-build-compilers  Build compiler images (Rust, C, Fortran)
   pf container-build-debugger   Build debugger images
   pf container-build-no-cache   Rebuild all without cache
+
+AUTOMATIC CONTAINERIZATION:
+  pf auto-containerize          Auto-detect and containerize project
+  pf auto-containerize-dir      Containerize a specific directory
+  pf auto-containerize-hints    Containerize with dependency hints
+  pf generate-dockerfile        Generate Dockerfile only (no build)
+  pf generate-quadlet           Generate Quadlet files only
+  pf auto-build-with-retry      Build with automatic retry
+  pf auto-build-retry-robust    Build with aggressive retry settings
+  pf ci-containerize            Full CI: build with retry + containerize
 
 PODMAN COMPOSE:
   pf compose-up                 Start API server
@@ -243,6 +298,12 @@ DEVELOPMENT:
 
 TESTING:
   pf container-test             Run container infrastructure tests
+
+CONTAINERIZATION OPTIONS:
+  --install-hint-deps="..."     Additional apt packages to install
+  --main-bin-hint="..."         Main binary/entry point hint
+  --port-hint=N                 Port to expose
+  --base-image-hint="..."       Base image to use
 
 DOCUMENTATION:
   See containers/README.md for full documentation
