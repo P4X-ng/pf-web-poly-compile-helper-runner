@@ -171,6 +171,32 @@ task install
   shell bash install.sh
 end
 
+task install-all
+  describe Install wrapper and quadlets; then attempt to build images (non-fatal); start services
+  shell pf install
+  shell pf quadlet-install
+  shell pf quadlet-reload
+  shell pf quadlet-enable
+  shell pf quadlet-start-api
+  shell echo "Attempting to build images with podman (optional)..."
+  shell ./containers/scripts/build-containers.sh all || echo "Note: container image build skipped/failed; you can build later with: ./containers/scripts/build-containers.sh all"
+end
+
+task install-all-min
+  describe Install wrapper and quadlets only (no image build)
+  shell pf install
+  shell pf quadlet-install
+  shell pf quadlet-reload
+  shell pf quadlet-enable
+end
+
+task debug-check-podman
+  describe Show podman visibility from inside pf container
+  shell command -v podman || echo "podman not in PATH"
+  shell ls -l /usr/bin/podman || true
+  shell env | grep -E 'XDG_RUNTIME_DIR|CONTAINER_HOST' || true
+end
+
 task install-exploit
   describe Install exploit development tools (pwntools, checksec, ROPgadget, ropper)
   

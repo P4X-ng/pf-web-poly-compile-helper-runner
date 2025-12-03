@@ -60,14 +60,16 @@ build_base_image() {
 write_wrapper() {
   local target="${WRAPPER_PATH}"
   mkdir -p "$(dirname "${target}")"
-  cat > "${target}" <<EOF
+  cat > "${target}" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-IMAGE="\${PF_IMAGE:-${IMAGE_NAME}}"
-RUNTIME="\${PF_RUNTIME:-${RUNTIME}}"
+DEFAULT_IMAGE="__DEFAULT_IMAGE__"
+DEFAULT_RUNTIME="__DEFAULT_RUNTIME__"
+IMAGE="${PF_IMAGE:-$DEFAULT_IMAGE}"
+RUNTIME="${PF_RUNTIME:-$DEFAULT_RUNTIME}"
 
-if ! command -v "${RUNTIME}" >/dev/null 2>&1; then
-  echo "Error: container runtime '${RUNTIME}' not found. Set PF_RUNTIME or install docker/podman." >&2
+if ! command -v "$RUNTIME" >/dev/null 2>&1; then
+  echo "Error: container runtime '$RUNTIME' not found. Set PF_RUNTIME or install docker/podman." >&2
   exit 1
 fi
 
@@ -84,11 +86,39 @@ ARGS+=(-v "${WORKDIR}:${WORKDIR}")
 ARGS+=(-w "${WORKDIR}")
 if [[ -d "${HOME}" ]]; then
   ARGS+=(-v "${HOME}:${HOME}")
+  ARGS+=(-e "HOME=${HOME}")
 fi
+
+# Expose host podman into the container when present (for container/quadlet tasks)
+# Mount podman binary and runtime socket so 'podman' inside the container talks to host daemon
+if command -v podman >/dev/null 2>&1; then
+  # binary
+  if [[ -x "/usr/bin/podman" ]]; then
+    ARGS+=(-v "/usr/bin/podman:/usr/bin/podman:ro")
+  fi
+  # helpers
+  [[ -d "/usr/libexec/podman" ]] && ARGS+=(-v "/usr/libexec/podman:/usr/libexec/podman:ro")
+  [[ -d "/usr/lib/podman" ]] && ARGS+=(-v "/usr/lib/podman:/usr/lib/podman:ro")
+  # socket (rootless)
+  SOCK_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  if [[ -S "${SOCK_DIR}/podman/podman.sock" ]]; then
+    ARGS+=(-v "${SOCK_DIR}/podman:${SOCK_DIR}/podman")
+    # ensure same path inside container
+    ARGS+=(-e "XDG_RUNTIME_DIR=${SOCK_DIR}")
+    ARGS+=(-e "CONTAINER_HOST=unix://${SOCK_DIR}/podman/podman.sock")
+  fi
+  # config
+  [[ -d "/etc/containers" ]] && ARGS+=(-v "/etc/containers:/etc/containers:ro")
+  [[ -d "/usr/share/containers" ]] && ARGS+=(-v "/usr/share/containers:/usr/share/containers:ro")
+fi
+
 ARGS+=(-e "PFY_FILE=${PFY_FILE:-}")
 
-exec "${RUNTIME}" "${ARGS[@]}" "${USER_FLAG[@]}" "${IMAGE}" pf "$@"
+exec "$RUNTIME" "${ARGS[@]}" "${USER_FLAG[@]}" "$IMAGE" pf "$@"
 EOF
+  # bake defaults
+  sed -i "s|__DEFAULT_IMAGE__|${IMAGE_NAME}|g" "${target}"
+  sed -i "s|__DEFAULT_RUNTIME__|${RUNTIME}|g" "${target}"
   chmod +x "${target}"
   echo "[pf-install] Wrapper installed at ${target}"
 }
