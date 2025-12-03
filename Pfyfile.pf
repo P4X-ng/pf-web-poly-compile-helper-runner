@@ -223,3 +223,16 @@ task sync-demo
   shell echo "  From file: sync src=./ dest=/backup/ exclude_file=.rsync-exclude"
   shell echo "See pf-runner/SYNC.md for full documentation"
 end
+
+# --- install aliases ---
+task install-native
+  describe Build pf natively via container and drop to ~/.local/bin/pf
+  shell_lang bash
+  shell ./containers/scripts/install-native.sh
+end
+
+task install-system
+  describe Install ~/.local/bin/pf to /usr/local/bin/pf (host; may prompt for sudo)
+  shell_lang bash
+  shell ./containers/scripts/install-system.sh
+end
