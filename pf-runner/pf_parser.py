@@ -1,4 +1,4 @@
-#!/home/punk/.venv/bin/python
+#!/usr/bin/env python3
 """
 - Symbol-free DSL: shell, packages install/remove, service start/stop/enable/disable/restart, directory, copy
 - describe: one-line task description shows in `pf list`
