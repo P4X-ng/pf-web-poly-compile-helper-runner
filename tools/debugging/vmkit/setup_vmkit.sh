@@ -4,14 +4,19 @@
 echo "[*] VMKit Setup for PE Execution and MicroVM Swarm Fuzzing"
 echo ""
 
-# Check for VMKit repository
-VMKIT_PATH="${VMKIT_PATH:-../HGWS/VMkit}"
-if [ -d "$VMKIT_PATH" ]; then
-    echo "[*] VMKit repository found at: $VMKIT_PATH"
+# Check for VMKit - use environment variable or check if in PATH
+VMKIT_PATH="${VMKIT_PATH:-}"
+if [ -n "$VMKIT_PATH" ] && [ -d "$VMKIT_PATH" ]; then
+    echo "[*] VMKit repository found at: $VMKIT_PATH (via VMKIT_PATH)"
     VMKIT_AVAILABLE=true
+elif command -v vmkit >/dev/null 2>&1; then
+    echo "[*] VMKit found in PATH"
+    VMKIT_AVAILABLE=true
+    VMKIT_PATH=""
 else
-    echo "[!] VMKit repository not found at: $VMKIT_PATH"
-    echo "[!] Please clone HyperionGray/HGWS repository or set VMKIT_PATH"
+    echo "[!] VMKit not found"
+    echo "[!] Set VMKIT_PATH environment variable to your VMKit installation"
+    echo "[!] Or ensure vmkit is in your PATH"
     VMKIT_AVAILABLE=false
 fi
 
@@ -63,9 +68,19 @@ EOF
     
     echo "[*] VMKit PE execution configuration created"
     
-    # Check VMKit installation
-    if [ -f "$VMKIT_PATH/vmkit" ]; then
-        echo "[*] VMKit binary found"
+    # Check VMKit installation - use command if in PATH, otherwise check VMKIT_PATH
+    if command -v vmkit >/dev/null 2>&1; then
+        echo "[*] VMKit binary found in PATH"
+        
+        # Test VMKit functionality
+        echo "[*] Testing VMKit functionality..."
+        if vmkit --version >/dev/null 2>&1; then
+            echo "[✓] VMKit is functional"
+        else
+            echo "[!] VMKit test failed - may need setup"
+        fi
+    elif [ -n "$VMKIT_PATH" ] && [ -f "$VMKIT_PATH/vmkit" ]; then
+        echo "[*] VMKit binary found at $VMKIT_PATH"
         
         # Test VMKit functionality
         echo "[*] Testing VMKit functionality..."
@@ -83,12 +98,14 @@ EOF
 #!/bin/bash
 # VMKit wrapper for PE execution
 
-VMKIT_PATH="${VMKIT_PATH:-../HGWS/VMkit}"
-VMKIT_BIN="$VMKIT_PATH/vmkit"
-
-if [ ! -f "$VMKIT_BIN" ]; then
-    echo "Error: VMKit not found at $VMKIT_BIN"
-    echo "Set VMKIT_PATH environment variable or install VMKit"
+# Check for vmkit in PATH first, then use VMKIT_PATH
+if command -v vmkit >/dev/null 2>&1; then
+    VMKIT_BIN="vmkit"
+elif [ -n "$VMKIT_PATH" ] && [ -f "$VMKIT_PATH/vmkit" ]; then
+    VMKIT_BIN="$VMKIT_PATH/vmkit"
+else
+    echo "Error: VMKit not found"
+    echo "Set VMKIT_PATH environment variable or ensure vmkit is in your PATH"
     exit 1
 fi
 
@@ -122,10 +139,9 @@ else
     echo "[!] VMKit not available - using fallback QEMU implementation"
     echo ""
     echo "To enable VMKit integration:"
-    echo "  1. Clone HyperionGray/HGWS repository"
-    echo "  2. Build and install VMKit"
-    echo "  3. Set VMKIT_PATH environment variable"
-    echo "  4. Re-run this setup script"
+    echo "  1. Install VMKit or build from source"
+    echo "  2. Ensure vmkit is in your PATH, or set VMKIT_PATH environment variable"
+    echo "  3. Re-run this setup script"
 fi
 
 echo ""
