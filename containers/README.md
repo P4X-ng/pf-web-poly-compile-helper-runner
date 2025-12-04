@@ -13,6 +13,90 @@ This directory contains all containerization files for the polyglot development 
 - `scripts/` - Container build and management scripts
 - `quadlets/` - Podman Quadlet files for systemd integration
 
+## PE Execution Containers
+
+The project includes specialized containers for running Windows Portable Executables (PEs) and macOS applications:
+
+### Available PE Containers
+
+| Container | Description | Base |
+|-----------|-------------|------|
+| `pf-pe-vmkit` | VMKit lightweight VM with full passthrough | Ubuntu 22.04 + QEMU |
+| `pf-pe-reactos` | ReactOS-based native PE execution | Ubuntu 22.04 + QEMU + ReactOS |
+| `pf-macos-qemu` | macOS VM using QEMU (Docker-OSX style) | Ubuntu 22.04 + QEMU |
+
+### Building PE Containers
+
+```bash
+# Build all PE containers
+./containers/scripts/build-containers.sh pe
+
+# Build individual containers
+pf pe-build-vmkit
+pf pe-build-reactos
+pf pe-build-macos
+```
+
+### Using PE Containers
+
+#### VMKit (Lightweight VM with passthrough)
+
+```bash
+# Setup VMKit environment
+pf pe-vmkit-setup
+
+# Run a PE file
+pf pe-vmkit-run pe=/path/to/myapp.exe
+
+# Analyze PE before running
+pf pe-vmkit-analyze pe=/path/to/myapp.exe
+```
+
+#### ReactOS (Windows-compatible open-source OS)
+
+```bash
+# Setup ReactOS (downloads LiveCD)
+pf pe-reactos-setup
+
+# Run PE in ReactOS VM
+pf pe-reactos-run pe=/path/to/myapp.exe
+
+# Interactive shell
+pf pe-reactos-shell
+```
+
+#### macOS (QEMU-based)
+
+```bash
+# Create macOS disk image
+pf macos-setup
+
+# Start macOS VM (requires legal macOS image)
+pf macos-run
+
+# Run headless
+pf macos-run-headless
+```
+
+### KVM Acceleration
+
+For best performance, use KVM acceleration:
+
+```bash
+# Docker/Podman with KVM
+podman run --device /dev/kvm ...
+
+# Check KVM availability
+ls -la /dev/kvm
+```
+
+### Notes
+
+- **ReactOS** is an open-source Windows-compatible operating system
+- **macOS containers** require legitimate Apple hardware/license
+- All containers support `--device /dev/kvm` for hardware acceleration
+- See `Pfyfile.pe-containers.pf` for all available tasks
+
 ## Automatic Containerization
 
 The pf-runner includes an automatic containerization module (`pf_containerize.py`) that can:
@@ -100,6 +184,7 @@ Each subdirectory contains:
 ./containers/scripts/build-containers.sh api
 ./containers/scripts/build-containers.sh build
 ./containers/scripts/build-containers.sh debug
+./containers/scripts/build-containers.sh pe    # PE execution containers
 ```
 
 ### Using Quadlets (Systemd Integration)
