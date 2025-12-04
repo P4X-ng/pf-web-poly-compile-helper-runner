@@ -22,23 +22,59 @@ A comprehensive guide to using the **pf** task runner with examples of all major
 
 ## Installation
 
+### 1. Core pf CLI (container-based, recommended)
+
+From the repository root:
+
 ```bash
-# Quick install (recommended)
-./install.sh
+# Build base + pf-runner images and install ~/.local/bin/pf using podman
+./install --runtime podman
 
-# Choose runtime/image (optional)
-PF_IMAGE=pf-runner:latest ./install.sh --runtime podman
+# or explicitly
+./install.sh --runtime podman
+```
 
-# Manual host-only installation (legacy)
+This will:
+- Build `localhost/pf-base:latest`
+- Build `pf-runner:local` (used by the `pf` wrapper)
+- Install the wrapper at `~/.local/bin/pf` (unless you pass `--no-wrapper`)
+
+Verify installation:
+```bash
+pf list
+```
+
+### 2. Optional: full containerized web stack
+
+Once `pf` works, you can build the full container suite (API server, debuggers, WASM builders):
+
+```bash
+# Build all container images with podman
+pf container-build-all
+
+# Or use the higher-level installer (containers + quadlets)
+pf install-full runtime=podman
+```
+
+For interactive development with containers:
+```bash
+# Start API server + pf-runner containers
+./containers/scripts/run-dev.sh
+
+# Build all WASM modules (Rust/C/Fortran/WAT)
+./containers/scripts/run-dev.sh build
+```
+
+### 3. Manual host-only installation (legacy)
+
+If you prefer a pure host install without containers:
+
+```bash
 pip install --user "fabric>=3.2,<4"
 cd pf-runner && make install-local
 ```
 
-Verify installation:
-```bash
-pf --version
-pf list
-```
+In that mode, `pf` runs directly on the host Python instead of inside a container.
 
 ---
 

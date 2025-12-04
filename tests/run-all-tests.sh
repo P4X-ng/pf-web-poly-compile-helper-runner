@@ -104,6 +104,17 @@ fi
 log_info "Basic dependencies satisfied"
 echo
 
+# Test Suite 0: Install / Container Build Smoke Test
+echo "=================================================================="
+echo "0. INSTALL / CONTAINER BUILD SMOKE TEST"
+echo "=================================================================="
+if [ -f "$SCRIPT_DIR/install/test-install-wrapper.sh" ]; then
+    run_test_suite "Install Script (podman)" "$SCRIPT_DIR/install/test-install-wrapper.sh"
+else
+    log_info "Install smoke test not found, skipping"
+fi
+echo
+
 # Test Suite 1: Grammar Testing
 echo "=================================================================="
 echo "1. GRAMMAR TESTING"

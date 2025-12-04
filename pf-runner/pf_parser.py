@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # pf.py — single-file, symbol-free Fabric runner with a tiny DSL.
 """
 - Symbol-free DSL: shell, packages install/remove, service start/stop/enable/disable/restart, directory, copy

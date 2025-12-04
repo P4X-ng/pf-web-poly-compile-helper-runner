@@ -22,8 +22,9 @@ RUN python3 -m pip install --break-system-packages lark
 COPY --chown=pfuser:pfuser pf-runner /app/pf-runner
 COPY --chown=pfuser:pfuser Pfyfile*.pf /app/
 
-# Make pf executable and create symlinks
-RUN chmod +x /app/pf-runner/pf_parser.py && \
+# Make pf executable and create symlinks (ensure user bin dir exists)
+RUN mkdir -p /home/pfuser/.local/bin && \
+    chmod +x /app/pf-runner/pf_parser.py && \
     ln -sf /app/pf-runner/pf_parser.py /home/pfuser/.local/bin/pf && \
     ln -sf /app/pf-runner/pf_parser.py /usr/local/bin/pf
 
