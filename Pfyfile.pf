@@ -171,18 +171,23 @@ task web-build-c-llvm-opt
 end
 
 task install-base
-  describe Build pf-runner container image and install pf wrapper
+  describe Install pf task runner directly to /usr/local/bin
   shell bash install.sh
 end
 
 task install-web
-  describe Build pf-runner container image and install pf wrapper for containerized web stack
+  describe Install pf task runner (alias for install)
   shell bash install.sh
 end
 
 task install
-  describe Build pf-runner container image and install pf wrapper
+  describe Install pf task runner directly to /usr/local/bin
   shell bash install.sh
+end
+
+task install-container
+  describe Build pf-runner container images (alternative to direct install)
+  shell bash install-container.sh
 end
 
 task install-full mode=container runtime=podman
@@ -207,7 +212,7 @@ task install-all
 end
 
 task install-all-min
-  describe Install wrapper and quadlets only (no image build)
+  describe Install pf and quadlets only (no image build)
   shell pf install
   shell pf quadlet-install
   shell pf quadlet-reload
