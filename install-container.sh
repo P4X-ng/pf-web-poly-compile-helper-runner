@@ -8,7 +8,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE_NAME="pf-runner:local"
 BASE_IMAGE="localhost/pf-base:latest"
 RUNTIME=""
-INSTALL_PATH="/usr/local/bin"
+PREFIX="/usr/local"
 
 # Color output helpers
 RED='\033[0;31m'
@@ -67,19 +67,23 @@ build_image() {
 }
 
 copy_pf_to_host() {
-  log_info "Copying pf from container to ${INSTALL_PATH}/pf..."
+  local install_path="${PREFIX}/bin"
+  local install_dir="${PREFIX}/lib/pf-runner"
 
-  # Check if we have write permission
-  if ! mkdir -p "${INSTALL_PATH}" 2>/dev/null; then
+  log_info "Copying pf from container to ${install_path}/pf..."
+
+  # Try to create directories first (will fail if no permission)
+  if ! mkdir -p "${install_dir}" 2>/dev/null || ! mkdir -p "${install_path}" 2>/dev/null; then
     if [[ $EUID -ne 0 ]]; then
-      log_error "Cannot create ${INSTALL_PATH}. Run with sudo or use --prefix ~/.local"
+      log_error "Cannot create ${install_path} or ${install_dir}. Run with sudo or use --prefix ~/.local"
       exit 1
     fi
   fi
 
-  if [[ ! -w "${INSTALL_PATH}" ]]; then
+  # Check if we have write permission
+  if [[ ! -w "${install_path}" ]] || [[ ! -w "${install_dir}" ]]; then
     if [[ $EUID -ne 0 ]]; then
-      log_error "Cannot write to ${INSTALL_PATH}. Run with sudo or use --prefix ~/.local"
+      log_error "Cannot write to ${install_path}. Run with sudo or use --prefix ~/.local"
       exit 1
     fi
   fi
@@ -89,8 +93,6 @@ copy_pf_to_host() {
   container_id=$(${RUNTIME} create "${IMAGE_NAME}" /bin/true)
 
   # Copy pf-runner directory from container
-  local install_dir="${INSTALL_PATH%/bin}/lib/pf-runner"
-  mkdir -p "${install_dir}"
   ${RUNTIME} cp "${container_id}:/app/pf-runner/." "${install_dir}/"
 
   # Remove the temporary container
@@ -100,14 +102,14 @@ copy_pf_to_host() {
   chmod +x "${install_dir}/pf_parser.py"
 
   # Create the pf executable in bin directory
-  cat > "${INSTALL_PATH}/pf" <<EOF
+  cat > "${install_path}/pf" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 exec python3 "${install_dir}/pf_parser.py" "\$@"
 EOF
-  chmod +x "${INSTALL_PATH}/pf"
+  chmod +x "${install_path}/pf"
 
-  log_success "pf installed to ${INSTALL_PATH}/pf"
+  log_success "pf installed to ${install_path}/pf"
 }
 
 # Parse args
@@ -118,7 +120,7 @@ while [[ $# -gt 0 ]]; do
     --runtime)
       RUNTIME="$2"; shift 2;;
     --prefix)
-      INSTALL_PATH="$2/bin"; shift 2;;
+      PREFIX="$2"; shift 2;;
     -h|--help)
       usage; exit 0;;
     *)
@@ -136,14 +138,14 @@ copy_pf_to_host
 
 log_success "Installation complete!"
 log_info ""
-log_info "Verify with: ${INSTALL_PATH}/pf --version"
-log_info "List tasks:  ${INSTALL_PATH}/pf list"
+log_info "Verify with: ${PREFIX}/bin/pf --version"
+log_info "List tasks:  ${PREFIX}/bin/pf list"
 
 # Check if install path is in PATH
-if [[ ":${PATH}:" != *":${INSTALL_PATH}:"* ]]; then
+if [[ ":${PATH}:" != *":${PREFIX}/bin:"* ]]; then
   log_warn ""
-  log_warn "Note: ${INSTALL_PATH} is not in your PATH."
-  log_warn "Add it with: export PATH=\"${INSTALL_PATH}:\$PATH\""
+  log_warn "Note: ${PREFIX}/bin is not in your PATH."
+  log_warn "Add it with: export PATH=\"${PREFIX}/bin:\$PATH\""
 fi
 
 exit 0
