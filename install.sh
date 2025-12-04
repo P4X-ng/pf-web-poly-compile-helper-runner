@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Container-based installer for pf
-# Builds the pf-runner image and installs a wrapper that runs pf via Docker/Podman.
+# Builds the pf-runner image and installs the pf executable directly to /usr/local/bin.
 
 set -euo pipefail
 
@@ -8,22 +8,20 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE_NAME="pf-runner:local"
 BASE_IMAGE="localhost/pf-base:latest"
 RUNTIME=""
-WRAPPER_PATH="${HOME}/.local/bin/pf"
-INSTALL_WRAPPER=1
 
 usage() {
   cat <<'USAGE'
-Usage: ./install.sh [--image NAME] [--runtime docker|podman] [--wrapper PATH] [--no-wrapper]
+Usage: ./install.sh [--image NAME] [--runtime docker|podman]
 
-Builds the pf-runner container image (Dockerfile.pf-runner) and installs a small
-wrapper that runs pf inside the container with your current working directory mounted.
+Builds the pf-runner container image (Dockerfile.pf-runner) and installs the pf
+executable directly to /usr/local/bin using a privileged container with mounted volume.
 
 Options:
   --image NAME       Image tag to build/use (default: pf-runner:local)
   --runtime NAME     Container runtime to use (auto-detects docker then podman)
-  --wrapper PATH     Where to write the pf wrapper (default: ~/.local/bin/pf)
-  --no-wrapper       Build image only, skip writing wrapper
   -h, --help         Show this help
+
+Note: This installation requires sudo privileges to write to /usr/local/bin.
 USAGE
 }
 
@@ -57,70 +55,66 @@ build_base_image() {
   echo "[pf-install] Base image built: ${BASE_IMAGE}"
 }
 
-write_wrapper() {
-  local target="${WRAPPER_PATH}"
-  mkdir -p "$(dirname "${target}")"
-  cat > "${target}" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-DEFAULT_IMAGE="__DEFAULT_IMAGE__"
-DEFAULT_RUNTIME="__DEFAULT_RUNTIME__"
-IMAGE="${PF_IMAGE:-$DEFAULT_IMAGE}"
-RUNTIME="${PF_RUNTIME:-$DEFAULT_RUNTIME}"
-
-if ! command -v "$RUNTIME" >/dev/null 2>&1; then
-  echo "Error: container runtime '$RUNTIME' not found. Set PF_RUNTIME or install docker/podman." >&2
-  exit 1
-fi
-
-WORKDIR="${PWD}"
-ARGS=(run --rm)
-if [[ -t 0 && -t 1 ]]; then
-  ARGS+=(-it)
-fi
-USER_FLAG=()
-if command -v id >/dev/null 2>&1; then
-  USER_FLAG=(--user "$(id -u)":"$(id -g)")
-fi
-ARGS+=(-v "${WORKDIR}:${WORKDIR}")
-ARGS+=(-w "${WORKDIR}")
-if [[ -d "${HOME}" ]]; then
-  ARGS+=(-v "${HOME}:${HOME}")
-  ARGS+=(-e "HOME=${HOME}")
-fi
-
-# Expose host podman into the container when present (for container/quadlet tasks)
-# Mount podman binary and runtime socket so 'podman' inside the container talks to host daemon
-if command -v podman >/dev/null 2>&1; then
-  # binary
-  if [[ -x "/usr/bin/podman" ]]; then
-    ARGS+=(-v "/usr/bin/podman:/usr/bin/podman:ro")
+install_executable() {
+  echo "[pf-install] Installing pf executable to /usr/local/bin..."
+  
+  # Check if we can write to /usr/local/bin
+  if [[ ! -w /usr/local/bin ]] && [[ $EUID -ne 0 ]]; then
+    echo "[pf-install] Warning: /usr/local/bin is not writable. You may need sudo privileges."
+    echo "[pf-install] Attempting installation with sudo..."
+    SUDO_CMD="sudo"
+  else
+    SUDO_CMD=""
   fi
-  # helpers
-  [[ -d "/usr/libexec/podman" ]] && ARGS+=(-v "/usr/libexec/podman:/usr/libexec/podman:ro")
-  [[ -d "/usr/lib/podman" ]] && ARGS+=(-v "/usr/lib/podman:/usr/lib/podman:ro")
-  # socket (rootless)
-  SOCK_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-  if [[ -S "${SOCK_DIR}/podman/podman.sock" ]]; then
-    ARGS+=(-v "${SOCK_DIR}/podman:${SOCK_DIR}/podman")
-    # ensure same path inside container
-    ARGS+=(-e "XDG_RUNTIME_DIR=${SOCK_DIR}")
-    ARGS+=(-e "CONTAINER_HOST=unix://${SOCK_DIR}/podman/podman.sock")
+  
+  # Create a temporary container to extract the executable
+  echo "[pf-install] Extracting pf executable from container..."
+  TEMP_CONTAINER=$(${RUNTIME} create "${IMAGE_NAME}")
+  
+  # Copy the main Python script from the container
+  if ! ${RUNTIME} cp "${TEMP_CONTAINER}:/app/pf-runner/pf_parser.py" /tmp/pf_parser.py; then
+    echo "Error: Failed to extract pf_parser.py from container" >&2
+    ${RUNTIME} rm "${TEMP_CONTAINER}" >/dev/null 2>&1 || true
+    exit 1
   fi
-  # config
-  [[ -d "/etc/containers" ]] && ARGS+=(-v "/etc/containers:/etc/containers:ro")
-  [[ -d "/usr/share/containers" ]] && ARGS+=(-v "/usr/share/containers:/usr/share/containers:ro")
-fi
-
-ARGS+=(-e "PFY_FILE=${PFY_FILE:-}")
-
-exec "$RUNTIME" "${ARGS[@]}" "${USER_FLAG[@]}" "$IMAGE" pf "$@"
+  
+  # Clean up the temporary container
+  ${RUNTIME} rm "${TEMP_CONTAINER}" >/dev/null 2>&1 || true
+  
+  # Create a proper executable script with shebang
+  cat > /tmp/pf-executable << 'EOF'
+#!/usr/bin/env python3
 EOF
-  # bake defaults
-  sed -i "s|__DEFAULT_IMAGE__|${IMAGE_NAME}|g" "${target}"
-  sed -i "s|__DEFAULT_RUNTIME__|${RUNTIME}|g" "${target}"
-  chmod +x "${target}"
-  echo "[pf-install] Wrapper installed at ${target}"
+  
+  # Append the Python script content (skip the first line if it's a comment)
+  tail -n +2 /tmp/pf_parser.py >> /tmp/pf-executable
+  
+  # Install the executable
+  if [[ -n "${SUDO_CMD}" ]]; then
+    ${SUDO_CMD} cp /tmp/pf-executable /usr/local/bin/pf
+    ${SUDO_CMD} chmod +x /usr/local/bin/pf
+    ${SUDO_CMD} chown root:root /usr/local/bin/pf
+  else
+    cp /tmp/pf-executable /usr/local/bin/pf
+    chmod +x /usr/local/bin/pf
+  fi
+  
+  # Clean up temporary files
+  rm -f /tmp/pf-executable /tmp/pf_parser.py
+  
+  echo "[pf-install] pf executable installed to /usr/local/bin/pf"
+  
+  # Check if required Python packages are available
+  echo "[pf-install] Checking Python dependencies..."
+  if ! python3 -c "import fabric" >/dev/null 2>&1; then
+    echo "[pf-install] Warning: Python 'fabric' package not found."
+    echo "[pf-install] Install with: pip3 install 'fabric>=3.2,<4'"
+  fi
+  
+  if ! python3 -c "import lark" >/dev/null 2>&1; then
+    echo "[pf-install] Warning: Python 'lark' package not found."
+    echo "[pf-install] Install with: pip3 install lark"
+  fi
 }
 
 # Parse args
@@ -130,10 +124,6 @@ while [[ $# -gt 0 ]]; do
       IMAGE_NAME="$2"; shift 2;;
     --runtime)
       RUNTIME="$2"; shift 2;;
-    --wrapper)
-      WRAPPER_PATH="$2"; shift 2;;
-    --no-wrapper)
-      INSTALL_WRAPPER=0; shift;;
     -h|--help)
       usage; exit 0;;
     *)
@@ -144,13 +134,13 @@ done
 choose_runtime
 build_base_image
 build_image
+install_executable
 
-if [[ ${INSTALL_WRAPPER} -eq 1 ]]; then
-  write_wrapper
-  echo "[pf-install] Add $(dirname "${WRAPPER_PATH}") to PATH if needed."
-  echo "[pf-install] Run 'pf list' to verify."
-else
-  echo "[pf-install] Wrapper skipped (image only)."
-fi
+echo "[pf-install] Installation complete!"
+echo "[pf-install] The 'pf' command is now available in /usr/local/bin"
+echo "[pf-install] Run 'pf list' to verify the installation."
+echo ""
+echo "[pf-install] Note: Make sure you have the required Python dependencies:"
+echo "[pf-install]   pip3 install 'fabric>=3.2,<4' lark"
 
 exit 0
