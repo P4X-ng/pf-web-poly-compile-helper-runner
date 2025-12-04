@@ -102,7 +102,7 @@ include ships two helper tasks:
 - `pf pasm-sample` — compiles `examples/pasm/vec_add.mlir`, emits `.pasm`/`.manifest.json`, and prints a summary of registers/opcodes.
 - `pf pasm-compile mlir=/path/to/kernel.mlir` — runs the same lowering pipeline on any MLIR file you point at.
 
-Both tasks reuse the shared virtualenv at `/home/punk/.venv` and run the vendored
+Both tasks reuse the shared virtualenv at `~/.venv` and run the vendored
 `pasm_compiler` addon (`addon/pasm_compiler`). All outputs land beside the input
 MLIR file, so you can version-control the emitted pASM or feed it directly into
 the Packet CPU executors.
