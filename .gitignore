@@ -44,3 +44,4 @@ pf-runner/*.spec
 
 # Container artifacts (don't commit built images or runtime data)
 # Note: Dockerfiles and quadlet configs ARE committed
+pfail.fail.pf
