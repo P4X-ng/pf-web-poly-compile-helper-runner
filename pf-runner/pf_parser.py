@@ -2032,6 +2032,89 @@ BUILTINS: Dict[str, List[str]] = {
 
 
 # ---------- CLI ----------
+def _format_task_params(params: Dict[str, str], style: str = "modern") -> str:
+    """Format task parameters for display.
+    
+    Args:
+        params: Dictionary of parameter names to default values
+        style: "modern" for --param=value, "legacy" for param=value
+        
+    Returns:
+        Formatted string of parameters
+    """
+    if not params:
+        return ""
+    
+    if style == "modern":
+        # Use --param=value style to encourage modern syntax
+        parts = []
+        for k, v in params.items():
+            if v:
+                parts.append(f"--{k}={v}")
+            else:
+                parts.append(f"--{k}=<value>")
+        return " ".join(parts)
+    else:
+        # Legacy param=value style
+        return " ".join(f"{k}={v}" for k, v in params.items())
+
+
+def _print_task_help(task_name: str, file_arg: Optional[str] = None):
+    """Print detailed help for a specific task."""
+    # Load tasks
+    src_text, task_sources = _load_pfy_source_with_includes(file_arg=file_arg)
+    tasks = parse_pfyfile_text(src_text, task_sources)
+    
+    # Check builtins first
+    if task_name in BUILTINS:
+        print(f"Task: {task_name} (built-in)")
+        print()
+        print("Commands:")
+        for line in BUILTINS[task_name]:
+            print(f"  {line}")
+        return
+    
+    # Check DSL tasks
+    if task_name not in tasks:
+        import difflib as _difflib
+        close = _difflib.get_close_matches(task_name, list(tasks.keys()), n=3, cutoff=0.5)
+        print(f"[error] no such task: {task_name}", file=sys.stderr)
+        if close:
+            print(f"Did you mean: {', '.join(close)}?", file=sys.stderr)
+        return
+    
+    task = tasks[task_name]
+    print(f"Task: {task_name}")
+    
+    if task.description:
+        print(f"Description: {task.description}")
+    
+    # Show parameters if any
+    if task.params:
+        print()
+        print("Arguments (use --arg=value or arg=value):")
+        for param, default in task.params.items():
+            if default:
+                print(f"  --{param}={default}  (default: {default})")
+            else:
+                print(f"  --{param}=<value>  (required)")
+    
+    # Show commands
+    print()
+    print("Commands:")
+    for line in task.lines:
+        print(f"  {line}")
+    
+    # Show usage example
+    print()
+    if task.params:
+        param_example = _format_task_params(task.params, style="modern")
+        print(f"Usage: pf {task_name} {param_example}")
+        print(f"       pf {task_name} {_format_task_params(task.params, style='legacy')}  # legacy style")
+    else:
+        print(f"Usage: pf {task_name}")
+
+
 def _print_list(file_arg: Optional[str] = None):
     """Print available tasks grouped by source"""
     print("Built-ins:")
@@ -2057,14 +2140,29 @@ def _print_list(file_arg: Optional[str] = None):
             else:
                 main_tasks.append(task)
 
+        def _format_task_line(task):
+            """Format a single task line with name, args, and description."""
+            # Format args in modern --arg=value style
+            args_str = ""
+            if task.params:
+                args_parts = []
+                for k, v in task.params.items():
+                    if v:
+                        args_parts.append(f"--{k}={v}")
+                    else:
+                        args_parts.append(f"--{k}=<value>")
+                args_str = " " + " ".join(args_parts)
+            
+            if task.description:
+                return f"  {task.name}{args_str}  —  {task.description}"
+            else:
+                return f"  {task.name}{args_str}"
+
         # Print main tasks first
         if main_tasks:
             print(f"\nFrom {source}:")
             for task in main_tasks:
-                if task.description:
-                    print(f"  {task.name}  —  {task.description}")
-                else:
-                    print(f"  {task.name}")
+                print(_format_task_line(task))
 
         # Print tasks grouped by include file
         for source_file in sorted(tasks_by_source.keys()):
@@ -2081,10 +2179,7 @@ def _print_list(file_arg: Optional[str] = None):
 
             print(f"\n[{subcommand_name}] From {source_file}:")
             for task in sorted(tasks_by_source[source_file], key=lambda t: t.name):
-                if task.description:
-                    print(f"  {task.name}  —  {task.description}")
-                else:
-                    print(f"  {task.name}")
+                print(_format_task_line(task))
 
     if ENV_MAP:
         print("\nEnvironments:")
