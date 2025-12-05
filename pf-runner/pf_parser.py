@@ -2230,7 +2230,7 @@ def main(argv: List[str]) -> int:
             _print_task_help(tasks[1], file_arg=pfy_file_arg)
         else:
             print(
-                "Usage: pf [<pfy_file>] [env=NAME|--env=NAME|--env NAME]* [hosts=..|--hosts=..|--hosts ..] [user=..|--user=..|--user ..] [port=..|--port=..|--port ..] [sudo=true|--sudo] [sudo_user=..|--sudo-user=..|--sudo-user ..] <task|list|help> [more_tasks...]"
+                "Usage: pf [<pfy_file>] [env=NAME|--env=NAME|--env NAME]* [hosts=..|--hosts=..|--hosts ..] [user=..|--user=..|--user ..] [port=..|--port=..|--port ..] [sudo=true|--sudo] [sudo_user=..|--sudo-user=..|--sudo-user ..] <task|list|help|prune|debug-on|debug-off> [more_tasks...]"
             )
             print("\nAvailable tasks:")
             _print_list(file_arg=pfy_file_arg)
@@ -2238,6 +2238,55 @@ def main(argv: List[str]) -> int:
     if tasks[0] in ("list", "--list"):
         _print_list(file_arg=pfy_file_arg)
         return 0
+    
+    # Handle prune command
+    if tasks[0] == "prune":
+        from pf_prune import prune_tasks
+        # Parse prune-specific arguments
+        dry_run = True
+        verbose = False
+        output_file = "pfail.fail.pf"
+        prune_args = tasks[1:]
+        for arg in prune_args:
+            if arg in ("-d", "--dry-run"):
+                dry_run = True
+            elif arg in ("-v", "--verbose"):
+                verbose = True
+            elif arg.startswith("-o=") or arg.startswith("--output="):
+                output_file = arg.split("=", 1)[1]
+        passed, failed, failed_tasks = prune_tasks(
+            file_arg=pfy_file_arg,
+            dry_run=dry_run,
+            verbose=verbose,
+            output_file=output_file
+        )
+        return 0 if failed == 0 else 1
+    
+    # Handle debug-on command
+    if tasks[0] == "debug-on":
+        try:
+            from pf_prune import set_debug_mode
+            set_debug_mode(True)
+            return 0
+        except PermissionError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"Error enabling debug mode: {e}", file=sys.stderr)
+            return 1
+    
+    # Handle debug-off command
+    if tasks[0] == "debug-off":
+        try:
+            from pf_prune import set_debug_mode
+            set_debug_mode(False)
+            return 0
+        except PermissionError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"Error disabling debug mode: {e}", file=sys.stderr)
+            return 1
 
     # Resolve hosts
     env_hosts = _merge_env_hosts(env_names)
@@ -2251,7 +2300,7 @@ def main(argv: List[str]) -> int:
     valid_task_names = (
         set(BUILTINS.keys())
         | set(dsl_tasks.keys())
-        | {"list", "help", "--help", "--list"}
+        | {"list", "help", "--help", "--list", "prune", "debug-on", "debug-off"}
     )
 
     # Parse multi-task + params: <task> [k=v ...] <task2> [k=v ...] ...
@@ -2260,7 +2309,7 @@ def main(argv: List[str]) -> int:
     all_names_for_alias = (
         list(BUILTINS.keys())
         + list(dsl_tasks.keys())
-        + ["list", "help", "--help", "--list"]
+        + ["list", "help", "--help", "--list", "prune", "debug-on", "debug-off"]
     )
     aliasmap_all = _alias_map(all_names_for_alias)
     while j < len(tasks):
