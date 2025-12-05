@@ -684,47 +684,6 @@ def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str]]:
     return task_name, params
 
 
-def _join_continuation_lines(lines: List[str]) -> List[str]:
-    """
-    Join lines that use bash-style backslash continuation.
-
-    Lines ending with a backslash (\\) are joined with the following line(s)
-    until a line is encountered that doesn't end with backslash.
-
-    Example:
-        ["echo hello \\", "world \\", "today"]
-        becomes:
-        ["echo hello world today"]
-    """
-    result: List[str] = []
-    pending: Optional[str] = None
-
-    for raw in lines:
-        stripped = raw.strip()
-        if pending is not None:
-            # Continue from previous line - append with space
-            if stripped.endswith("\\"):
-                # Still continuing - remove backslash and append
-                pending = pending + " " + stripped[:-1].rstrip()
-            else:
-                # End of continuation - finalize
-                pending = pending + " " + stripped
-                result.append(pending)
-                pending = None
-        else:
-            if stripped.endswith("\\"):
-                # Start of continuation
-                pending = stripped[:-1].rstrip()
-            else:
-                result.append(stripped)
-
-    # Handle case where file ends with a continuation (incomplete)
-    if pending is not None:
-        result.append(pending)
-
-    return result
-
-
 def parse_pfyfile_text(
     text: str, task_sources: Optional[Dict[str, str]] = None
 ) -> Dict[str, Task]:
