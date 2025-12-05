@@ -290,7 +290,9 @@ async function runTests() {
     console.log('=============================');
     console.log(`✅ Passed: ${tester.passed}`);
     console.log(`❌ Failed: ${tester.failed}`);
-    console.log(`📈 Success Rate: ${Math.round((tester.passed / (tester.passed + tester.failed)) * 100)}%`);
+    const total = tester.passed + tester.failed;
+    const successRate = total > 0 ? Math.round((tester.passed / total) * 100) : 0;
+    console.log(`📈 Success Rate: ${successRate}%`);
 
     if (tester.failed === 0) {
         console.log('\n🎉 All help variation tests passed!');
