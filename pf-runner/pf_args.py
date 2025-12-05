@@ -7,6 +7,8 @@ This module provides:
 - Subcommand architecture
 - Auto-discovery of subcommands from included files
 - Backward compatibility with existing usage patterns
+- Flexible help command support (help, -h, --help, hlep, hepl, heelp, hlp)
+- Flexible parameter formats (--key=value, -k val, key=value)
 """
 
 import argparse
@@ -14,6 +16,9 @@ import os
 import sys
 from typing import List, Dict, Optional, Tuple, Any
 import re
+
+# Help command variations - common typos and alternatives
+HELP_VARIATIONS = {'help', '--help', '-h', 'hlep', 'hepl', 'heelp', 'hlp'}
 
 
 class PfArgumentParser:
@@ -124,6 +129,42 @@ For more help on a specific subcommand:
             'topic',
             nargs='?',
             help='Task or subcommand to show help for'
+        )
+        
+        # prune command - syntax checking
+        prune_parser = self.subparsers.add_parser(
+            'prune',
+            help='Check syntax of tasks and report errors',
+            description='Validate all tasks for syntax errors without executing them'
+        )
+        prune_parser.add_argument(
+            '-d', '--dry-run',
+            action='store_true',
+            help='Only check syntax, do not execute (default behavior)'
+        )
+        prune_parser.add_argument(
+            '-v', '--verbose',
+            action='store_true',
+            help='Show verbose output with stack traces'
+        )
+        prune_parser.add_argument(
+            '-o', '--output',
+            default='pfail.fail.pf',
+            help='Output file for failed tasks (default: pfail.fail.pf)'
+        )
+        
+        # debug-on command
+        debug_on_parser = self.subparsers.add_parser(
+            'debug-on',
+            help='Enable debug mode for verbose error reporting',
+            description='Toggle debug mode on - provides full stack traces for errors'
+        )
+        
+        # debug-off command
+        debug_off_parser = self.subparsers.add_parser(
+            'debug-off',
+            help='Disable debug mode',
+            description='Toggle debug mode off - returns to normal error reporting'
         )
         
     def add_subcommand_from_file(self, filename: str, tasks: List[str]):
@@ -238,7 +279,8 @@ For more help on a specific subcommand:
         """Parse arguments with legacy compatibility."""
         
         # Handle special cases for backward compatibility
-        if not args or args[0] in ('help', '--help', '-h'):
+        # Support help variations: help, --help, -h, hlep, hepl, heelp, hlp
+        if not args or args[0] in HELP_VARIATIONS:
             if len(args) > 1:
                 # Help for specific topic
                 return self.parser.parse_args(['help', args[1]])
