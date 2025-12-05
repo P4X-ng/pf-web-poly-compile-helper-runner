@@ -63,6 +63,9 @@ def _find_pfyfile(
 # ---------- Interpolation ----------
 _VAR_RE = re.compile(r"\$([a-zA-Z_][\w-]*)|\$\{([a-zA-Z_][\w-]*)\}")
 
+# Pattern for parsing [alias xxx] blocks in task definitions
+_ALIAS_BLOCK_RE = re.compile(r'\[([^\]]+)\]')
+
 
 def _interpolate(text: str, params: dict, extra_env: dict | None = None) -> str:
     merged = dict(os.environ)
@@ -665,10 +668,9 @@ def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str], List[str]]:
 
     # Extract aliases from [...] blocks first
     aliases: List[str] = []
-    alias_pattern = re.compile(r'\[([^\]]+)\]')
     
     # Find all [...] blocks and extract aliases
-    for match in alias_pattern.finditer(rest):
+    for match in _ALIAS_BLOCK_RE.finditer(rest):
         block_content = match.group(1)
         # Split by | for multiple aliases in one block
         parts = block_content.split('|')
@@ -685,7 +687,7 @@ def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str], List[str]]:
                     aliases.append(alias_name)
     
     # Remove [...] blocks from the line for further parsing
-    rest_without_aliases = alias_pattern.sub('', rest).strip()
+    rest_without_aliases = _ALIAS_BLOCK_RE.sub('', rest).strip()
 
     # Use shlex to properly handle quoted values
     try:

@@ -50,6 +50,12 @@ DEFAULT_HOST = os.environ.get("PF_API_HOST", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("PF_API_PORT", "8000"))
 DEFAULT_WORKERS = int(os.environ.get("PF_API_WORKERS", "4"))
 
+# Reserved paths that should not be treated as task aliases
+RESERVED_PATHS = frozenset([
+    "docs", "redoc", "openapi.json", "favicon.ico",
+    "pf", "reload", "health"
+])
+
 
 # Pydantic models for request/response
 class TaskInfo(BaseModel):
@@ -343,8 +349,8 @@ async def reload_tasks():
 @app.get("/{alias}", tags=["Aliases"])
 async def get_task_by_alias(alias: str):
     """Get task details via its alias."""
-    # Skip certain paths that shouldn't be treated as aliases
-    if alias in ["docs", "redoc", "openapi.json", "favicon.ico", "pf", "reload", "health"]:
+    # Skip reserved paths that shouldn't be treated as aliases
+    if alias in RESERVED_PATHS:
         raise HTTPException(status_code=404, detail="Not found")
     
     resolved_name = _resolve_task_name(alias)
@@ -359,8 +365,8 @@ async def get_task_by_alias(alias: str):
 @app.post("/{alias}", tags=["Aliases"])
 async def execute_task_by_alias(alias: str, request: TaskExecuteRequest):
     """Execute a task via its alias."""
-    # Skip certain paths that shouldn't be treated as aliases
-    if alias in ["docs", "redoc", "openapi.json", "favicon.ico", "pf", "reload"]:
+    # Skip reserved paths that shouldn't be treated as aliases
+    if alias in RESERVED_PATHS:
         raise HTTPException(status_code=404, detail="Not found")
     
     resolved_name = _resolve_task_name(alias)
