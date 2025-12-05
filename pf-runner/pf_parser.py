@@ -684,14 +684,74 @@ def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str]]:
     return task_name, params
 
 
+def _join_continuation_lines(lines: List[str]) -> List[str]:
+    """
+    Join lines that use bash-style backslash continuation.
+
+    Lines ending with a backslash (\\) are joined with the following line(s)
+    until a line is encountered that doesn't end with backslash.
+
+    Example:
+        ["echo hello \\", "world \\", "today"]
+        becomes:
+        ["echo hello world today"]
+    """
+    result: List[str] = []
+    pending: Optional[str] = None
+
+    for raw in lines:
+        stripped = raw.strip()
+        if pending is not None:
+            # Continue from previous line - append with space
+            if stripped.endswith("\\"):
+                # Still continuing - remove backslash and append
+                pending = pending + " " + stripped[:-1].rstrip()
+            else:
+                # End of continuation - finalize
+                pending = pending + " " + stripped
+                result.append(pending)
+                pending = None
+        else:
+            if stripped.endswith("\\"):
+                # Start of continuation
+                pending = stripped[:-1].rstrip()
+            else:
+                result.append(stripped)
+
+    # Handle case where file ends with a continuation (incomplete)
+    if pending is not None:
+        result.append(pending)
+
+    return result
+
+
 def parse_pfyfile_text(
     text: str, task_sources: Optional[Dict[str, str]] = None
 ) -> Dict[str, Task]:
     """Parse Pfyfile text into Task objects with optional source tracking"""
     tasks: Dict[str, Task] = {}
     cur: Optional[Task] = None
+    pending_continuation: Optional[str] = None
+
     for raw in text.splitlines():
         line = raw.strip()
+
+        # Handle backslash line continuation inside task bodies
+        if cur is not None and pending_continuation is not None:
+            # Skip blank lines and comments during continuation
+            if not line or line.startswith("#"):
+                continue
+            if line.endswith("\\"):
+                # Still continuing - remove backslash and append
+                pending_continuation = pending_continuation + " " + line[:-1].rstrip()
+                continue
+            else:
+                # End of continuation - finalize
+                pending_continuation = pending_continuation + " " + line
+                cur.add(pending_continuation)
+                pending_continuation = None
+                continue
+
         if not line or line.startswith("#"):
             continue
         if line.startswith("task "):
@@ -706,6 +766,10 @@ def parse_pfyfile_text(
             tasks[task_name] = cur
             continue
         if line == "end":
+            # Handle incomplete continuation at task end
+            if pending_continuation is not None and cur is not None:
+                cur.add(pending_continuation)
+                pending_continuation = None
             cur = None
             continue
         if cur is None:
@@ -714,6 +778,12 @@ def parse_pfyfile_text(
             if cur.description is None:
                 cur.description = line.split(None, 1)[1].strip()
             continue
+
+        # Check for backslash continuation
+        if line.endswith("\\"):
+            pending_continuation = line[:-1].rstrip()
+            continue
+
         cur.add(line)
     return tasks
 
