@@ -2159,8 +2159,12 @@ def _print_list(file_arg: Optional[str] = None):
             print(f"  {k}: {', '.join(vs) if vs else '(empty)'}")
 
 
-def _print_task_help(task_name: str, file_arg: Optional[str] = None):
-    """Print detailed help for a specific task."""
+def _print_task_help(task_name: str, file_arg: Optional[str] = None) -> int:
+    """Print detailed help for a specific task.
+    
+    Returns:
+        0 if task was found, 1 if task was not found.
+    """
     # Load tasks
     dsl_src, task_sources = _load_pfy_source_with_includes(file_arg=file_arg)
     dsl_tasks = parse_pfyfile_text(dsl_src, task_sources)
@@ -2171,7 +2175,7 @@ def _print_task_help(task_name: str, file_arg: Optional[str] = None):
         print("\nCommands:")
         for line in BUILTINS[task_name]:
             print(f"  {line}")
-        return
+        return 0
     
     # Check DSL tasks
     if task_name in dsl_tasks:
@@ -2188,7 +2192,7 @@ def _print_task_help(task_name: str, file_arg: Optional[str] = None):
         print("\nCommands:")
         for line in task.lines:
             print(f"  {line}")
-        return
+        return 0
     
     # Task not found - suggest similar tasks
     import difflib
@@ -2200,6 +2204,7 @@ def _print_task_help(task_name: str, file_arg: Optional[str] = None):
         print("Did you mean:", file=sys.stderr)
         for s in suggestions:
             print(f"  {s}", file=sys.stderr)
+    return 1
 
 
 def _alias_map(names: List[str]) -> Dict[str, str]:
@@ -2337,7 +2342,7 @@ def main(argv: List[str]) -> int:
 
     if not tasks or tasks[0] in HELP_VARIATIONS:
         if len(tasks) > 1:
-            _print_task_help(tasks[1], file_arg=pfy_file_arg)
+            return _print_task_help(tasks[1], file_arg=pfy_file_arg)
         else:
             print(
                 "Usage: pf [<pfy_file>] [env=NAME|--env=NAME|--env NAME]* [hosts=..|--hosts=..|--hosts ..] [user=..|--user=..|--user ..] [port=..|--port=..|--port ..] [sudo=true|--sudo] [sudo_user=..|--sudo-user=..|--sudo-user ..] <task|list|help> [more_tasks...]"
@@ -2382,7 +2387,7 @@ def main(argv: List[str]) -> int:
         if tname in HELP_VARIATIONS:
             if selected:
                 # Show help for the last selected task
-                _print_task_help(selected[-1][0], file_arg=pfy_file_arg)
+                return _print_task_help(selected[-1][0], file_arg=pfy_file_arg)
             else:
                 # Show general help
                 print(
@@ -2415,8 +2420,8 @@ def main(argv: List[str]) -> int:
             if idx >= len(tasks):
                 return False
             next_arg = tasks[idx]
-            # Value shouldn't start with -- (another flag) or be a task name
-            return not next_arg.startswith("--") and next_arg not in valid_task_names
+            # Value shouldn't start with - or -- (another flag) or be a task name
+            return not next_arg.startswith("-") and next_arg not in valid_task_names
 
         while j < len(tasks):
             arg = tasks[j]
@@ -2444,7 +2449,7 @@ def main(argv: List[str]) -> int:
                 else:
                     # --param without a value, or next arg is a task
                     break
-            elif arg.startswith("-") and len(arg) == 2 and not "=" in arg:
+            elif arg.startswith("-") and len(arg) == 2:
                 # Format: -k value (short form, single letter key)
                 if _is_valid_parameter_value(j + 1):
                     k = arg[1:]  # Strip - prefix
