@@ -151,7 +151,6 @@ For more help on a specific subcommand:
             help="Disable debug mode",
             description="Toggle debug mode off - returns to normal error reporting",
         )
-
     def add_subcommand_from_file(self, filename: str, tasks: List[str]):
         """Add a subcommand based on an included file."""
         # Transform filename to subcommand name
