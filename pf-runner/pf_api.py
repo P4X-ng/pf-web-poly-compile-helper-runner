@@ -56,7 +56,6 @@ RESERVED_PATHS = frozenset([
     "pf", "reload", "health"
 ])
 
-
 # Pydantic models for request/response
 class TaskInfo(BaseModel):
     """Information about a pf task."""

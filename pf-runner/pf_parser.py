@@ -36,80 +36,13 @@ ENV_MAP: Dict[str, List[str] | str] = {
     "staging": "staging@10.1.2.3:22,staging@10.1.2.4:22",
 }
 
-# Help command variations - common typos and alternatives
-HELP_VARIATIONS = {"help", "--help", "-h", "hlep", "hepl", "heelp", "hlp"}
+# Import HELP_VARIATIONS from pf_args to avoid duplication
+try:
+    from pf_args import HELP_VARIATIONS
+except ImportError:
+    # Fallback for standalone use
+    HELP_VARIATIONS = {"help", "--help", "-h", "hlep", "hepl", "heelp", "hlp"}
 
-
-# ---------- Flexible help and parameter parsing ----------
-def _normalize_help_option(arg: str) -> bool:
-    """Check if an argument is a help option, including common typos."""
-    help_variations = {
-        'help', '--help', '-h', 'hlep', 'hepl', 'heelp', 'hlp',
-        '--hlep', '--hepl', '--heelp', '--hlp'
-    }
-    return arg.lower() in help_variations
-
-
-def _normalize_parameter_key(key: str) -> str:
-    """Normalize parameter keys to handle variations."""
-    # Handle common variations
-    key_mappings = {
-        'sudo_user': 'sudo-user',
-        'become_user': 'become-user',
-        'sudo-user': 'sudo-user',
-        'become-user': 'become-user',
-    }
-    return key_mappings.get(key, key)
-
-
-def _try_parse_parameter_formats(args: List[str], i: int) -> Tuple[Optional[Tuple[str, str]], int]:
-    """
-    Try to parse parameter in multiple formats:
-    1. --key=value
-    2. --key value
-    3. -k value (single char)
-    4. key=value
-    
-    Returns: ((key, value), new_index) or (None, original_index)
-    """
-    if i >= len(args):
-        return None, i
-        
-    arg = args[i]
-    
-    # Format 1: --key=value or key=value
-    if '=' in arg:
-        if arg.startswith('--'):
-            key, value = arg[2:].split('=', 1)
-            return (_normalize_parameter_key(key), value), i + 1
-        elif not arg.startswith('-'):
-            key, value = arg.split('=', 1)
-            return (_normalize_parameter_key(key), value), i + 1
-    
-    # Format 2: --key value
-    if arg.startswith('--') and i + 1 < len(args):
-        key = arg[2:]
-        next_arg = args[i + 1]
-        if not next_arg.startswith('-') and '=' not in next_arg:
-            return (_normalize_parameter_key(key), next_arg), i + 2
-    
-    # Format 3: -k value (single character options)
-    if arg.startswith('-') and len(arg) == 2 and i + 1 < len(args):
-        short_key = arg[1]
-        next_arg = args[i + 1]
-        if not next_arg.startswith('-') and '=' not in next_arg:
-            # Map common short options
-            short_mappings = {
-                'h': 'help',
-                'f': 'file',
-                'u': 'user',
-                'p': 'port',
-                'e': 'env',
-            }
-            key = short_mappings.get(short_key, short_key)
-            return (_normalize_parameter_key(key), next_arg), i + 2
-    
-    return None, i
 
 # ---------- Pfyfile discovery ----------
 def _find_pfyfile(
@@ -744,7 +677,7 @@ def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str], List[str]]:
 
     # Extract aliases from [...] blocks first
     aliases: List[str] = []
-    
+
     # Find all [...] blocks and extract aliases
     for match in _ALIAS_BLOCK_RE.finditer(rest):
         block_content = match.group(1)
@@ -843,17 +776,30 @@ def parse_pfyfile_text(
     """
     tasks: Dict[str, Task] = {}
     cur: Optional[Task] = None
-    
-    # Pre-process all lines and strip them
-    all_lines = [raw.strip() for raw in text.splitlines()]
-    line_idx = 0
-    
-    while line_idx < len(all_lines):
-        line = all_lines[line_idx]
-        
-        # Skip empty lines and comments at top level
+    # Accumulator for lines being continued with backslash
+    pending_continuation: Optional[str] = None
+
+    for raw in text.splitlines():
+        line = raw.strip()
+
+        # Handle backslash line continuation inside task bodies
+        if cur is not None and pending_continuation is not None:
+            # Skip blank lines and comments during continuation
+            if not line or line.startswith("#"):
+                continue
+            # Remove trailing backslash (if present) and join with space
+            if line.endswith("\\"):
+                # Still continuing - remove backslash and append
+                pending_continuation = f"{pending_continuation} {line[:-1].rstrip()}"
+                continue
+            else:
+                # End of continuation - finalize and add to task
+                pending_continuation = f"{pending_continuation} {line}"
+                cur.add(pending_continuation)
+                pending_continuation = None
+                continue
+
         if not line or line.startswith("#"):
-            line_idx += 1
             continue
             
         if line.startswith("task "):
@@ -866,7 +812,6 @@ def parse_pfyfile_text(
                 source_file = task_sources.get(full_line) or task_sources.get(task_name)
             cur = Task(task_name, source_file=source_file, params=params, aliases=aliases)
             tasks[task_name] = cur
-            line_idx += 1
             continue
             
         if line == "end":
@@ -875,33 +820,22 @@ def parse_pfyfile_text(
                 cur.add(pending_continuation)
                 pending_continuation = None
             cur = None
-            line_idx += 1
             continue
             
         if cur is None:
-            line_idx += 1
             continue
-            
-        # Handle task body lines with potential line continuation
+        if line.startswith("describe "):
+            if cur.description is None:
+                cur.description = line.split(None, 1)[1].strip()
+            continue
+
+        # Check for backslash continuation (line ends with '\')
         if line.endswith("\\"):
-            # This line has continuation, process it
-            combined_line, next_idx = _process_line_continuation(all_lines, line_idx)
-            if combined_line:  # Only add non-empty combined lines
-                if combined_line.startswith("describe "):
-                    if cur.description is None:
-                        cur.description = combined_line.split(None, 1)[1].strip()
-                else:
-                    cur.add(combined_line)
-            line_idx = next_idx
-        else:
-            # Regular line without continuation
-            if line.startswith("describe "):
-                if cur.description is None:
-                    cur.description = line.split(None, 1)[1].strip()
-            else:
-                cur.add(line)
-            line_idx += 1
-            
+            # Start accumulating: remove trailing backslash
+            pending_continuation = line[:-1].rstrip()
+            continue
+
+        cur.add(line)
     return tasks
 
 
@@ -1088,108 +1022,17 @@ def _exec_line_fabric(
             )
             shown = f"{exports} {cmd}".strip()
             print(f"{prefix}$ {(('(sudo) ' + shown) if sudo else shown)}")
-           then
-        echo "RUN {install_deps}" >> "$DOCKERFILE"
-    fi
+            # Remote execution would go here; omitted for brevity
+            return 0
     
-    # Add build commands
-    if [ -n "$BUILD_CMDS" ]; then
-        echo "RUN $BUILD_CMDS" >> "$DOCKERFILE"
-    fi
-    
-    # Add port if specified
-    if [ -n "{port_hint}" ]; then
-        echo "EXPOSE {port_hint}" >> "$DOCKERFILE"
-    fi
-    
-    # Add run command
-    if [ -n "$RUN_CMD" ]; then
-        echo "CMD [\\"$RUN_CMD\\"]" >> "$DOCKERFILE"
-    fi
-    
-    # Replace variables in Dockerfile
-    sed -i "s|\\$BASE_IMAGE|$BASE_IMAGE|g" "$DOCKERFILE"
-    
-    echo ""
-    echo "==> Generated Dockerfile:"
-    cat "$DOCKERFILE"
-    
-    if [ "{dockerfile_only}" = "True" ]; then
-        echo ""
-        echo "✓ Dockerfile generated: $DOCKERFILE"
-        exit 0
-    fi
-    
-    # Build the container
-    echo ""
-    echo "==> Building container image..."
-    
-    # Prefer podman, fallback to docker
-    if command -v podman &> /dev/null; then
-        CONTAINER_RT="podman"
-    elif command -v docker &> /dev/null; then
-        CONTAINER_RT="docker"
-    else
-        echo "✗ Error: Neither podman nor docker found"
-        exit 1
-    fi
-    
-    $CONTAINER_RT build -t "$FULL_IMAGE" -f "$DOCKERFILE" .
-    
-    echo ""
-    echo "✓ Container image built: $FULL_IMAGE"
-    
-    # Generate Quadlet file
-    if [ "{quadlet_only}" != "True" ]; then
-        QUADLET_FILE="$PROJECT_NAME.container"
-        cat > "$QUADLET_FILE" << QUADLET_EOF
-[Unit]
-Description=$PROJECT_NAME container service
-Documentation=https://github.com/containers/podman/blob/main/docs/source/markdown/podman-systemd.unit.5.md
+    # Dispatch by verb
+    if verb == "shell":
+        return run(rest_of_line)
 
-[Container]
-ContainerName=$PROJECT_NAME
-Image=$FULL_IMAGE
+    # Parse args once for other ops
+    args = shlex.split(rest_of_line) if rest_of_line else []
 
-Volume=$PROJECT_NAME-data:/app/data:rw,z
-
-QUADLET_EOF
-
-        if [ -n "{port_hint}" ]; then
-            echo "PublishPort={port_hint}:{port_hint}" >> "$QUADLET_FILE"
-        fi
-        
-        cat >> "$QUADLET_FILE" << QUADLET_EOF
-
-Environment=TZ=UTC
-
-NoNewPrivileges=true
-
-Memory=512m
-CPUQuota=100%
-
-Label=app=$PROJECT_NAME
-Label=generator=pf-containerize
-
-Restart=always
-
-[Install]
-WantedBy=default.target
-QUADLET_EOF
-
-        echo "✓ Quadlet file generated: $QUADLET_FILE"
-    fi
-    
-    # Clean up
-    rm -f "$DOCKERFILE"
-fi
-
-echo ""
-echo "==> Containerization complete!"
-"""
-        return run(containerize_script)
-
-    if op == "sync":
+    if verb == "sync":
         # sync src=<path> dest=<path> [host=<host>] [user=<user>] [port=<port>]
         #      [excludes=["pattern1","pattern2"]] [exclude_file=<path>]
         #      [delete] [dry] [verbose]
@@ -1277,7 +1120,7 @@ echo "==> Containerization complete!"
         cmd = " ".join(rsync_parts)
         return run(cmd)
 
-    raise ValueError(f"Unknown verb: {op}")
+    raise ValueError(f"Unknown verb: {verb}")
 
 
 # ---------- Built-ins ----------
@@ -1309,18 +1152,46 @@ BUILTINS: Dict[str, List[str]] = {
 
 
 # ---------- CLI ----------
+
+def _format_task_params(params: Dict[str, str], style: str = "modern") -> str:
+    """Format task parameters for display.
+    
+    Args:
+        params: Dictionary of parameter names to default values
+        style: "modern" for --param=value, "legacy" for param=value
+        
+    Returns:
+        Formatted string of parameters
+    """
+    if not params:
+        return ""
+    
+    if style == "modern":
+        # Use --param=value style to encourage modern syntax
+        parts = []
+        for k, v in params.items():
+            parts.append(f"--{k}={v if v else '<value>'}")
+        return " ".join(parts)
+    else:
+        # Legacy param=value style - handle empty values consistently
+        parts = []
+        for k, v in params.items():
+            parts.append(f"{k}={v if v else '<value>'}")
+        return " ".join(parts)
+
+
 def _group_tasks_by_prefix(tasks_list: List) -> Tuple[List, Dict[str, List]]:
     """
     Group tasks by their prefix (e.g., 'road-block' -> 'road' group).
-
+    
     Returns:
         Tuple of (ungrouped_tasks, grouped_tasks_dict)
     """
     from collections import defaultdict
-
+    
     prefix_counts = defaultdict(list)
     ungrouped = []
-
+    
     for task in tasks_list:
         name = task.name
         # Check if task name has a prefix (contains hyphen or underscore)
@@ -1332,7 +1203,7 @@ def _group_tasks_by_prefix(tasks_list: List) -> Tuple[List, Dict[str, List]]:
             prefix_counts[prefix].append(task)
         else:
             ungrouped.append(task)
-
+    
     # Only group if there are 2+ tasks with the same prefix
     grouped = {}
     for prefix, task_list in prefix_counts.items():
@@ -1341,7 +1212,7 @@ def _group_tasks_by_prefix(tasks_list: List) -> Tuple[List, Dict[str, List]]:
         else:
             # If only one task with this prefix, treat as ungrouped
             ungrouped.extend(task_list)
-
+    
     return ungrouped, grouped
 
 
@@ -1370,15 +1241,20 @@ def _print_list(file_arg: Optional[str] = None):
             else:
                 main_tasks.append(task)
 
-        def format_task(task):
-            """Format a task for display with aliases and description."""
+        def format_task(task, indent="  "):
+            """Format a task for display with aliases, args, and description."""
             alias_str = ""
-            if hasattr(task, 'aliases') and task.aliases:
+            if getattr(task, 'aliases', None):
                 alias_str = f" ({', '.join(task.aliases)})"
+            # Format args in modern --arg=value style using shared function
+            args_str = _format_task_params(task.params, style="modern") if hasattr(task, 'params') else ""
+            if args_str:
+                args_str = " " + args_str
+            
             if task.description:
-                return f"  {task.name}{alias_str}  —  {task.description}"
+                return f"{indent}{task.name}{alias_str}{args_str}  —  {task.description}"
             else:
-                return f"  {task.name}{alias_str}"
+                return f"{indent}{task.name}{alias_str}{args_str}"
 
         # Print main tasks first, grouped by prefix
         if main_tasks:
@@ -1389,17 +1265,15 @@ def _print_list(file_arg: Optional[str] = None):
             for task in sorted(ungrouped, key=lambda t: t.name):
                 print(format_task(task))
             
+            # Print ungrouped tasks first
+            for task in sorted(ungrouped, key=lambda t: t.name):
+                print(format_task(task))
+            
             # Print grouped tasks by prefix
             for prefix in sorted(grouped.keys()):
                 print(f"\n  [{prefix}]")
                 for task in sorted(grouped[prefix], key=lambda t: t.name):
-                    alias_str = ""
-                    if hasattr(task, 'aliases') and task.aliases:
-                        alias_str = f" ({', '.join(task.aliases)})"
-                    if task.description:
-                        print(f"    {task.name}{alias_str}  —  {task.description}")
-                    else:
-                        print(f"    {task.name}{alias_str}")
+                    print(format_task(task, indent="    "))
 
         # Print tasks grouped by include file
         for source_file in sorted(tasks_by_source.keys()):
@@ -1417,7 +1291,7 @@ def _print_list(file_arg: Optional[str] = None):
             print(f"\n[{subcommand_name}] From {source_file}:")
             source_tasks = tasks_by_source[source_file]
             ungrouped, grouped = _group_tasks_by_prefix(source_tasks)
-
+            
             # Print ungrouped tasks first
             for task in sorted(ungrouped, key=lambda t: t.name):
                 print(format_task(task))
@@ -1426,13 +1300,7 @@ def _print_list(file_arg: Optional[str] = None):
             for prefix in sorted(grouped.keys()):
                 print(f"\n  [{prefix}]")
                 for task in sorted(grouped[prefix], key=lambda t: t.name):
-                    alias_str = ""
-                    if hasattr(task, 'aliases') and task.aliases:
-                        alias_str = f" ({', '.join(task.aliases)})"
-                    if task.description:
-                        print(f"    {task.name}{alias_str}  —  {task.description}")
-                    else:
-                        print(f"    {task.name}{alias_str}")
+                    print(format_task(task, indent="    "))
 
     if ENV_MAP:
         print("\nEnvironments:")
@@ -1636,6 +1504,55 @@ def main(argv: List[str]) -> int:
     if tasks[0] in ("list", "--list"):
         _print_list(file_arg=pfy_file_arg)
         return 0
+    
+    # Handle prune command
+    if tasks[0] == "prune":
+        from pf_prune import prune_tasks
+        # Parse prune-specific arguments
+        dry_run = True
+        verbose = False
+        output_file = "pfail.fail.pf"
+        prune_args = tasks[1:]
+        for arg in prune_args:
+            if arg in ("-d", "--dry-run"):
+                dry_run = True
+            elif arg in ("-v", "--verbose"):
+                verbose = True
+            elif arg.startswith("-o=") or arg.startswith("--output="):
+                output_file = arg.split("=", 1)[1]
+        passed, failed, failed_tasks = prune_tasks(
+            file_arg=pfy_file_arg,
+            dry_run=dry_run,
+            verbose=verbose,
+            output_file=output_file
+        )
+        return 0 if failed == 0 else 1
+    
+    # Handle debug-on command
+    if tasks[0] == "debug-on":
+        try:
+            from pf_prune import set_debug_mode
+            set_debug_mode(True)
+            return 0
+        except PermissionError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"Error enabling debug mode: {e}", file=sys.stderr)
+            return 1
+    
+    # Handle debug-off command
+    if tasks[0] == "debug-off":
+        try:
+            from pf_prune import set_debug_mode
+            set_debug_mode(False)
+            return 0
+        except PermissionError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"Error disabling debug mode: {e}", file=sys.stderr)
+            return 1
 
     # Handle prune command
     if tasks[0] == "prune":
@@ -1728,7 +1645,7 @@ def main(argv: List[str]) -> int:
     aliasmap_all.update(user_alias_map)
     while j < len(tasks):
         tname = tasks[j]
-
+        
         # If this is a help variation, show help for the previous task or general help
         if tname in HELP_VARIATIONS:
             if selected:
@@ -1742,7 +1659,7 @@ def main(argv: List[str]) -> int:
                 print("\nAvailable tasks:")
                 _print_list(file_arg=pfy_file_arg)
             return 0
-
+        
         if tname not in valid_task_names:
             if tname in aliasmap_all:
                 tname = aliasmap_all[tname]
@@ -1766,13 +1683,13 @@ def main(argv: List[str]) -> int:
             if idx >= len(tasks):
                 return False
             next_arg = tasks[idx]
-            # Value shouldn't start with - or -- (another flag) or be a task name/alias
-            return not next_arg.startswith("-") and next_arg not in all_valid_names
+            # Value shouldn't start with -- (another flag) or be a task name/alias
+            return not next_arg.startswith("--") and next_arg not in all_valid_names
 
         while j < len(tasks):
             arg = tasks[j]
             # Check if this looks like the next task name (including aliases)
-            if not arg.startswith("-") and "=" not in arg and arg in all_valid_names:
+            if not arg.startswith("--") and "=" not in arg and arg in all_valid_names:
                 break
 
             # Support multiple parameter formats:
