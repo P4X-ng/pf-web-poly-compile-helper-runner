@@ -34,6 +34,49 @@ const MIME = {
 const buildStatus = new Map();
 const buildLogs = new Map();
 
+// Maximum number of concurrent builds and log entries
+const MAX_BUILDS = 100;
+const MAX_LOGS_PER_BUILD = 1000;
+
+// Input validation helpers
+function sanitizeString(str, maxLength = 255) {
+  if (typeof str !== 'string') return '';
+  // Remove or escape potentially dangerous characters for logs/responses
+  return str
+    .slice(0, maxLength)
+    .replace(/[<>&"'`\\]/g, '')
+    .replace(/[\x00-\x1F\x7F]/g, ''); // Remove control characters
+}
+
+function isValidLanguage(language) {
+  const supportedLanguages = ['rust', 'c', 'fortran', 'wat'];
+  return typeof language === 'string' && supportedLanguages.includes(language);
+}
+
+function isValidTarget(target) {
+  const supportedTargets = ['wasm', 'llvm', 'asm'];
+  return typeof target === 'string' && supportedTargets.includes(target);
+}
+
+function isValidProjectName(project) {
+  // Handle null/undefined inputs and only allow alphanumeric, hyphens, and underscores
+  if (typeof project !== 'string' || project.length === 0) return false;
+  return /^[a-zA-Z0-9_-]+$/.test(project);
+}
+
+// Cleanup old builds to prevent memory leaks
+function cleanupOldBuilds() {
+  if (buildStatus.size > MAX_BUILDS) {
+    const entries = Array.from(buildStatus.entries());
+    entries.sort((a, b) => new Date(a[1].startTime) - new Date(b[1].startTime));
+    const toRemove = entries.slice(0, entries.length - MAX_BUILDS);
+    for (const [id] of toRemove) {
+      buildStatus.delete(id);
+      buildLogs.delete(id);
+    }
+  }
+}
+
 // Create Express app
 const app = express();
 const server = createServer(app);
@@ -172,7 +215,9 @@ app.get('/api/status', (req, res) => {
   const { buildId } = req.query;
   
   if (buildId) {
-    const status = buildStatus.get(buildId);
+    // Sanitize buildId input
+    const sanitizedBuildId = sanitizeString(buildId, 100);
+    const status = buildStatus.get(sanitizedBuildId);
     if (status) {
       res.json(status);
     } else {
@@ -191,10 +236,12 @@ app.get('/api/status', (req, res) => {
 // Get build logs
 app.get('/api/logs/:buildId', (req, res) => {
   const { buildId } = req.params;
-  const logs = buildLogs.get(buildId);
+  // Sanitize buildId input
+  const sanitizedBuildId = sanitizeString(buildId, 100);
+  const logs = buildLogs.get(sanitizedBuildId);
   
   if (logs) {
-    res.json({ buildId, logs });
+    res.json({ buildId: sanitizedBuildId, logs });
   } else {
     res.status(404).json({ error: 'Build logs not found' });
   }
@@ -206,20 +253,29 @@ app.post('/api/build/:language', async (req, res) => {
   const { target = 'wasm', project = 'pf-web-polyglot-demo-plus-c', ...options } = req.body;
   
   // Validate language
-  const supportedLanguages = ['rust', 'c', 'fortran', 'wat'];
-  if (!supportedLanguages.includes(language)) {
+  if (!isValidLanguage(language)) {
     return res.status(400).json({ 
-      error: `Unsupported language: ${language}. Supported: ${supportedLanguages.join(', ')}` 
+      error: `Unsupported language: ${sanitizeString(language)}. Supported: rust, c, fortran, wat` 
     });
   }
   
   // Validate target
-  const supportedTargets = ['wasm', 'llvm', 'asm'];
-  if (!supportedTargets.includes(target)) {
+  if (!isValidTarget(target)) {
     return res.status(400).json({ 
-      error: `Unsupported target: ${target}. Supported: ${supportedTargets.join(', ')}` 
+      error: `Unsupported target: ${sanitizeString(target)}. Supported: wasm, llvm, asm` 
     });
   }
+  
+  // Validate project name
+  const sanitizedProject = sanitizeString(project, 100);
+  if (!isValidProjectName(sanitizedProject)) {
+    return res.status(400).json({ 
+      error: 'Invalid project name. Only alphanumeric characters, hyphens, and underscores allowed.' 
+    });
+  }
+  
+  // Cleanup old builds to prevent memory leaks
+  cleanupOldBuilds();
   
   // Generate build ID
   const buildId = `${language}-${target}-${Date.now()}`;
@@ -229,7 +285,7 @@ app.post('/api/build/:language', async (req, res) => {
     buildId,
     language,
     target,
-    project,
+    project: sanitizedProject,
     status: 'queued',
     startTime: new Date().toISOString(),
     progress: 0
@@ -243,7 +299,7 @@ app.post('/api/build/:language', async (req, res) => {
     buildId,
     language,
     target,
-    project
+    project: sanitizedProject
   });
   
   // Start build asynchronously
@@ -290,15 +346,20 @@ app.post('/api/build/:language', async (req, res) => {
       status.duration = new Date(status.endTime) - new Date(status.startTime);
       buildStatus.set(buildId, status);
       
-      // Store logs
+      // Store logs (with size limits to prevent memory issues)
+      // Limit to 10KB per output to balance usability and memory usage
       const logs = buildLogs.get(buildId) || [];
       logs.push({
         timestamp: new Date().toISOString(),
         level: 'info',
         message: 'Build completed successfully',
-        stdout: result.stdout,
-        stderr: result.stderr
+        stdout: sanitizeString(result.stdout, 10000),
+        stderr: sanitizeString(result.stderr, 10000)
       });
+      // Limit log entries to prevent unbounded growth
+      if (logs.length > MAX_LOGS_PER_BUILD) {
+        logs.splice(0, logs.length - MAX_LOGS_PER_BUILD);
+      }
       buildLogs.set(buildId, logs);
       
       broadcast({
@@ -314,17 +375,21 @@ app.post('/api/build/:language', async (req, res) => {
       status.status = 'failed';
       status.endTime = new Date().toISOString();
       status.duration = new Date(status.endTime) - new Date(status.startTime);
-      status.error = error.message;
+      status.error = sanitizeString(error.message, 1000);
       buildStatus.set(buildId, status);
       
-      // Store error logs
+      // Store error logs (with size limits)
       const logs = buildLogs.get(buildId) || [];
       logs.push({
         timestamp: new Date().toISOString(),
         level: 'error',
         message: 'Build failed',
-        error: error.message
+        error: sanitizeString(error.message, 1000)
       });
+      // Limit log entries
+      if (logs.length > MAX_LOGS_PER_BUILD) {
+        logs.splice(0, logs.length - MAX_LOGS_PER_BUILD);
+      }
       buildLogs.set(buildId, logs);
       
       broadcast({
