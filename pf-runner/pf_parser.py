@@ -1247,6 +1247,7 @@ BUILTINS: Dict[str, List[str]] = {
 
 
 # ---------- CLI ----------
+=
 def _group_tasks_by_prefix(tasks_list: List) -> Tuple[List, Dict[str, List]]:
     """
     Group tasks by their prefix (e.g., 'road-block' -> 'road' group).
@@ -1281,7 +1282,6 @@ def _group_tasks_by_prefix(tasks_list: List) -> Tuple[List, Dict[str, List]]:
             ungrouped.extend(task_list)
     
     return ungrouped, grouped
-
 
 def _format_task_params(params: Dict[str, str], style: str = "modern") -> str:
     """Format task parameters for display.
