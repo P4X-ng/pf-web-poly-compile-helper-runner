@@ -677,9 +677,10 @@ def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str], List[str]]:
 
     # Extract aliases from [...] blocks first
     aliases: List[str] = []
+    alias_pattern = re.compile(r'\[([^\]]+)\]')
     
     # Find all [...] blocks and extract aliases
-    for match in _ALIAS_BLOCK_RE.finditer(rest):
+    for match in alias_pattern.finditer(rest):
         block_content = match.group(1)
         # Split by | for multiple aliases in one block
         parts = block_content.split('|')
@@ -696,7 +697,7 @@ def _parse_task_definition(line: str) -> Tuple[str, Dict[str, str], List[str]]:
                     aliases.append(alias_name)
     
     # Remove [...] blocks from the line for further parsing
-    rest_without_aliases = _ALIAS_BLOCK_RE.sub('', rest).strip()
+    rest_without_aliases = alias_pattern.sub('', rest).strip()
 
     # Use shlex to properly handle quoted values
     try:
@@ -1844,13 +1845,13 @@ def main(argv: List[str]) -> int:
             if idx >= len(tasks):
                 return False
             next_arg = tasks[idx]
-            # Value shouldn't start with - or -- (another flag) or be a task name (including aliases)
-            return not next_arg.startswith("-") and next_arg not in all_valid_names
+            # Value shouldn't start with -- (another flag) or be a task name
+            return not next_arg.startswith("--") and next_arg not in all_valid_names
 
         while j < len(tasks):
             arg = tasks[j]
             # Check if this looks like the next task name (including aliases)
-            if not arg.startswith("-") and "=" not in arg and arg in all_valid_names:
+            if not arg.startswith("--") and "=" not in arg and arg in all_valid_names:
                 break
 
             # Support multiple parameter formats:

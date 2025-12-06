@@ -56,7 +56,6 @@ RESERVED_PATHS = frozenset([
     "pf", "reload", "health"
 ])
 
-
 # Pydantic models for request/response
 class TaskInfo(BaseModel):
     """Information about a pf task."""
@@ -349,8 +348,8 @@ async def reload_tasks():
 @app.get("/{alias}", tags=["Aliases"])
 async def get_task_by_alias(alias: str):
     """Get task details via its alias."""
-    # Skip reserved paths that shouldn't be treated as aliases
-    if alias in RESERVED_PATHS:
+    # Skip certain paths that shouldn't be treated as aliases
+    if alias in ["docs", "redoc", "openapi.json", "favicon.ico", "pf", "reload", "health"]:
         raise HTTPException(status_code=404, detail="Not found")
     
     resolved_name = _resolve_task_name(alias)
@@ -365,8 +364,8 @@ async def get_task_by_alias(alias: str):
 @app.post("/{alias}", tags=["Aliases"])
 async def execute_task_by_alias(alias: str, request: TaskExecuteRequest):
     """Execute a task via its alias."""
-    # Skip reserved paths that shouldn't be treated as aliases
-    if alias in RESERVED_PATHS:
+    # Skip certain paths that shouldn't be treated as aliases
+    if alias in ["docs", "redoc", "openapi.json", "favicon.ico", "pf", "reload"]:
         raise HTTPException(status_code=404, detail="Not found")
     
     resolved_name = _resolve_task_name(alias)
