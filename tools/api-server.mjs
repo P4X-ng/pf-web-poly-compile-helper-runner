@@ -132,12 +132,20 @@ const rateLimitCleanupInterval = setInterval(() => {
 function getClientIp(req) {
   // Properly handle IP detection behind proxies
   // Express populates req.ip when trust proxy is enabled
-  // Fallback to standard proxy headers and socket address
-  return req.ip || 
-         req.headers['x-forwarded-for']?.split(',')[0].trim() ||
-         req.headers['x-real-ip'] ||
-         req.socket?.remoteAddress || 
-         'unknown';
+  // Only check proxy headers if trust proxy is actually enabled
+  const trustProxy = req.app.get('trust proxy');
+  
+  if (trustProxy && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) {
+    // When behind trusted proxy, use proxy headers
+    return req.ip || 
+           req.headers['x-forwarded-for']?.split(',')[0].trim() ||
+           req.headers['x-real-ip'] ||
+           req.socket?.remoteAddress || 
+           'unknown';
+  }
+  
+  // Direct connection or untrusted proxy - use socket address only
+  return req.socket?.remoteAddress || 'unknown';
 }
 
 function rateLimitMiddleware(req, res, next) {
@@ -171,8 +179,9 @@ function rateLimitMiddleware(req, res, next) {
 
 // Middleware
 // Enable trust proxy for proper IP detection behind load balancers
-// In production, consider restricting to specific proxy IPs for security
-app.set('trust proxy', process.env.TRUST_PROXY === 'false' ? false : true);
+// SECURITY: Default to false for security - require explicit enablement
+// Set TRUST_PROXY=true only when behind verified proxy infrastructure
+app.set('trust proxy', process.env.TRUST_PROXY === 'true');
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
@@ -659,18 +668,14 @@ function gracefulShutdown(signal) {
   }
   
   // Set a timeout for forced shutdown after 30 seconds
-  // Using unref() allows the process to exit earlier if all other work completes
-  // This prevents the timeout from keeping the process alive unnecessarily
+  // This ensures the process exits even if graceful shutdown hangs
   const forceShutdownTimeout = setTimeout(() => {
     logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, 30000);
   
-  // Allow early exit if graceful shutdown completes before timeout
-  forceShutdownTimeout.unref();
-  
   server.close(() => {
-    logger.info('Server closed');
+    logger.info('Server closed successfully');
     clearTimeout(forceShutdownTimeout);
     process.exit(0);
   });

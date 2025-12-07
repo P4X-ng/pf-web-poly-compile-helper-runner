@@ -187,12 +187,41 @@ API_PORT=8080
 
 - `CORS_ORIGIN`: Allowed CORS origins
 - `LOG_LEVEL`: Logging verbosity (error|warn|info|debug)
-- `TRUST_PROXY`: Trust proxy headers (default: true, set to 'false' to disable)
+- `TRUST_PROXY`: Trust proxy headers (default: false, set to 'true' to enable)
 - `PF_API_HOST`: API server bind address
 - `PF_API_PORT`: API server port
 - `PF_API_WORKERS`: Number of workers
 
-**Important**: In production behind a load balancer, `TRUST_PROXY` should be enabled. However, if your application is directly exposed to the internet without a trusted proxy, set `TRUST_PROXY=false` to prevent IP spoofing attacks.
+**Important Security Considerations:**
+
+`TRUST_PROXY` should only be enabled when your application is behind a **verified and trusted** proxy/load balancer:
+
+**When to enable** (set `TRUST_PROXY=true`):
+- Application behind AWS ELB/ALB
+- Behind nginx or Apache reverse proxy
+- Behind Cloudflare or similar CDN
+- Behind Kubernetes ingress controller
+
+**When to keep disabled** (default `TRUST_PROXY=false`):
+- Application directly exposed to the internet
+- No verified proxy infrastructure
+- Testing/development environments
+- Any setup where X-Forwarded-For can be spoofed
+
+**Advanced Configuration:**
+
+For maximum security, configure trust proxy with specific trusted IPs:
+
+```javascript
+// Instead of app.set('trust proxy', true)
+app.set('trust proxy', '127.0.0.1'); // Trust localhost only
+// Or trust specific network
+app.set('trust proxy', '10.0.0.0/8'); // Trust internal network
+// Or trust multiple IPs
+app.set('trust proxy', ['127.0.0.1', '192.168.1.1']);
+```
+
+See [Express trust proxy documentation](https://expressjs.com/en/guide/behind-proxies.html) for more options.
 
 ## Security Headers
 
