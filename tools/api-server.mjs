@@ -118,8 +118,23 @@ const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 100;
 
+// Cleanup rate limit entries periodically to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of rateLimitMap.entries()) {
+    if (now > data.resetTime) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, RATE_LIMIT_WINDOW);
+
+function getClientIp(req) {
+  // Properly handle IP detection behind proxies
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
 function rateLimitMiddleware(req, res, next) {
-  const clientIp = req.ip || req.connection.remoteAddress;
+  const clientIp = getClientIp(req);
   const now = Date.now();
   
   if (!rateLimitMap.has(clientIp)) {
@@ -150,6 +165,9 @@ function rateLimitMiddleware(req, res, next) {
 }
 
 // Middleware
+// Enable trust proxy for proper IP detection behind load balancers
+app.set('trust proxy', true);
+
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -626,33 +644,27 @@ wss.on('connection', (ws, req) => {
 });
 
 // Graceful shutdown handling
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
-  });
+function gracefulShutdown(signal) {
+  logger.info(`${signal} received, shutting down gracefully`);
   
-  // Force shutdown after 30 seconds
-  setTimeout(() => {
+  // Set a timeout for forced shutdown
+  const forceShutdownTimeout = setTimeout(() => {
     logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, 30000);
-});
+  
+  // Don't keep the process running just for this timeout
+  forceShutdownTimeout.unref();
+  
+  server.close(() => {
+    logger.info('Server closed');
+    clearTimeout(forceShutdownTimeout);
+    process.exit(0);
+  });
+}
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
-  });
-  
-  // Force shutdown after 30 seconds
-  setTimeout(() => {
-    logger.error('Forced shutdown after timeout');
-    process.exit(1);
-  }, 30000);
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Start server
 server.listen(PORT, () => {

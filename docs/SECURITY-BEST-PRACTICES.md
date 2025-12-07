@@ -115,7 +115,7 @@ npm audit
 npm audit fix
 ```
 
-**Status**: As of last check, no vulnerabilities found (0/0).
+**Status**: As of 2025-12-07, no vulnerabilities found (0/0). Run `npm audit` regularly to check for new issues.
 
 ### Package Updates
 
