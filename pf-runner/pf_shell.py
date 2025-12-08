@@ -196,9 +196,6 @@ def execute_shell_command(cmd_line: str, task_env: Optional[Dict[str, str]] = No
             exit_code = result.exited
             return exit_code
             
-        except PFExecutionError:
-            # Re-raise our own exceptions
-            raise
         except Exception as e:
             raise PFExecutionError(
                 message=f"Remote command execution failed: {e}",

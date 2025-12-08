@@ -35,6 +35,7 @@ try:
         PFExecutionError,
         PFEnvironmentError,
         PFConnectionError,
+        PFTaskNotFoundError,
         format_exception_for_user
     )
 except ImportError:
@@ -48,6 +49,8 @@ except ImportError:
     class PFEnvironmentError(PFException):
         pass
     class PFConnectionError(PFException):
+        pass
+    class PFTaskNotFoundError(PFException):
         pass
     def format_exception_for_user(exc, include_traceback=True):
         return str(exc)

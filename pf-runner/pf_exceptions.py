@@ -302,14 +302,20 @@ class PFExecutionError(PFException):
             parts = cmd.split()
             if parts:
                 exe_path = parts[0]
-                if os.path.exists(exe_path):
+                # Validate path is reasonable before attempting to read
+                # Only check files that exist and are regular files
+                if os.path.exists(exe_path) and os.path.isfile(exe_path):
                     try:
-                        # Read first few bytes to check for PE signature (MZ header)
-                        with open(exe_path, 'rb') as f:
-                            magic = f.read(2)
-                            if magic == b'MZ':
-                                is_likely_pe = True
-                    except (IOError, PermissionError):
+                        # Get absolute path to avoid directory traversal
+                        abs_path = os.path.abspath(exe_path)
+                        # Only read if it's a reasonable size (< 10MB header check)
+                        if os.path.getsize(abs_path) < 10 * 1024 * 1024:
+                            # Read first few bytes to check for PE signature (MZ header)
+                            with open(abs_path, 'rb') as f:
+                                magic = f.read(2)
+                                if magic == b'MZ':
+                                    is_likely_pe = True
+                    except (IOError, PermissionError, OSError):
                         # Can't read file, fall back to extension check
                         pass
             
