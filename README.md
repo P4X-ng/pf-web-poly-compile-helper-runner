@@ -6,6 +6,8 @@ A comprehensive polyglot WebAssembly development environment featuring the **pf*
 
 **New to pf?** Check out the [**QUICKSTART.md**](QUICKSTART.md) for a comprehensive guide with examples!
 
+**Want powerful combined workflows?** See [**SMART-WORKFLOWS.md**](docs/SMART-WORKFLOWS.md) for intelligent tool combinations!
+
 The QUICKSTART covers:
 - All parameter passing formats (4 different ways!)
 - Task definitions with examples
@@ -14,6 +16,29 @@ The QUICKSTART covers:
 - Build system helpers
 - Remote execution
 - And much more!
+
+### 🚀 NEW: Smart Workflows (Round 2)
+
+**Do less, but do it smart!** New smart workflows combine multiple tools intelligently:
+
+```bash
+# Vulnerability discovery in one command
+pf vuln-discover binary=/path/to/binary    # or: pf vd binary=./target
+
+# Secure build pipeline with auto-testing
+pf build-secure release=true               # or: pf bs release=true
+
+# Deep binary analysis with debugging
+pf debug-deep-dive binary=./app interactive=true   # or: pf dd binary=./app
+
+# Complete web security testing
+pf web-security-full-stack                 # or: pf wsfs
+
+# Smart kernel fuzzing
+pf kernel-smart-fuzz binary=./module       # or: pf ksf binary=./module
+```
+
+See [**Smart Workflows Guide**](docs/SMART-WORKFLOWS.md) for complete documentation.
 
 ## Overview
 
@@ -956,6 +981,7 @@ npx playwright show-report
 ## Documentation
 
 - **🚀 QUICKSTART Guide**: See [`QUICKSTART.md`](QUICKSTART.md) - **Start here!** Comprehensive guide with examples of all features
+- **🔥 SMART WORKFLOWS Guide**: See [`docs/SMART-WORKFLOWS.md`](docs/SMART-WORKFLOWS.md) - **NEW!** Powerful tool combinations for efficient workflows
 - **pf-runner Documentation**: See [`pf-runner/README.md`](pf-runner/README.md) for comprehensive pf runner documentation
 - **REST API Guide**: See [`docs/REST-API.md`](docs/REST-API.md) for complete API documentation and examples
 - **Security Testing Guide**: See [`docs/SECURITY-TESTING.md`](docs/SECURITY-TESTING.md) for web application security testing
