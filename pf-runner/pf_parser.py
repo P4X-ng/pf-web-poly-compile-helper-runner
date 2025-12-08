@@ -34,6 +34,7 @@ try:
         PFSyntaxError,
         PFExecutionError,
         PFEnvironmentError,
+        PFConnectionError,
         format_exception_for_user
     )
 except ImportError:
@@ -45,6 +46,8 @@ except ImportError:
     class PFExecutionError(PFException):
         pass
     class PFEnvironmentError(PFException):
+        pass
+    class PFConnectionError(PFException):
         pass
     def format_exception_for_user(exc, include_traceback=True):
         return str(exc)

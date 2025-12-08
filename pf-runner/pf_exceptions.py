@@ -283,22 +283,48 @@ class PFExecutionError(PFException):
         super().__init__(message=message, **kwargs)
         
         # Add PE executable detection if on Linux trying to run Windows binary
-        if (kwargs.get('exit_code') in (126, 127) and 
+        # Only suggest this for specific error codes that indicate execution issues
+        if (kwargs.get('exit_code') in (126, 127, -1) and 
             platform.system() == 'Linux' and 
             kwargs.get('command')):
             cmd = kwargs.get('command', '')
-            if cmd.endswith('.exe') or cmd.endswith('.dll'):
+            
+            # Check if command looks like it might be a Windows binary
+            # Look for common Windows executable patterns
+            is_likely_pe = False
+            
+            # Check file extension
+            if cmd.endswith('.exe') or cmd.endswith('.dll') or cmd.endswith('.bat'):
+                is_likely_pe = True
+            
+            # Check if the file exists and we can read it to verify
+            # Extract the actual executable path from the command
+            parts = cmd.split()
+            if parts:
+                exe_path = parts[0]
+                if os.path.exists(exe_path):
+                    try:
+                        # Read first few bytes to check for PE signature (MZ header)
+                        with open(exe_path, 'rb') as f:
+                            magic = f.read(2)
+                            if magic == b'MZ':
+                                is_likely_pe = True
+                    except (IOError, PermissionError):
+                        # Can't read file, fall back to extension check
+                        pass
+            
+            if is_likely_pe:
                 container = _detect_container_environment()
                 if container:
                     self.suggestion = (
                         f"You appear to be trying to execute a Windows PE executable "
-                        f"({cmd}) inside a {container} container on Linux. "
+                        f"inside a {container} container on Linux. "
                         "Consider using Wine or running this in a Windows environment."
                     )
                 else:
                     self.suggestion = (
                         f"You appear to be trying to execute a Windows PE executable "
-                        f"({cmd}) on Linux. Consider using Wine or running this "
+                        f"on Linux. Consider using Wine or running this "
                         "in a Windows environment."
                     )
 

@@ -180,17 +180,6 @@ def execute_shell_command(cmd_line: str, task_env: Optional[Dict[str, str]] = No
                 p = subprocess.Popen(command, shell=True, env=proc_env)
             
             exit_code = p.wait()
-            
-            # If command failed, raise detailed error
-            if exit_code != 0:
-                raise PFExecutionError(
-                    message=f"Command failed with exit code {exit_code}",
-                    command=display_cmd,
-                    exit_code=exit_code,
-                    environment=display_env,
-                    suggestion="Check the command output above for error details"
-                )
-            
             return exit_code
             
         except subprocess.SubprocessError as e:
@@ -205,17 +194,6 @@ def execute_shell_command(cmd_line: str, task_env: Optional[Dict[str, str]] = No
         try:
             result = connection.run(full_command, pty=True, warn=True, hide=False)
             exit_code = result.exited
-            
-            # If command failed, raise detailed error
-            if exit_code != 0:
-                raise PFExecutionError(
-                    message=f"Remote command failed with exit code {exit_code}",
-                    command=display_cmd,
-                    exit_code=exit_code,
-                    environment=display_env,
-                    suggestion="Check the remote command output for error details"
-                )
-            
             return exit_code
             
         except PFExecutionError:
