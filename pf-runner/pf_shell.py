@@ -13,6 +13,7 @@ import os
 import sys
 import shlex
 import re
+import subprocess
 from typing import List, Dict, Tuple, Optional
 
 # Import custom exceptions
@@ -162,7 +163,6 @@ def execute_shell_command(cmd_line: str, task_env: Optional[Dict[str, str]] = No
     # Execute the command
     if connection is None:
         # Local execution
-        import subprocess
         
         # Build environment for subprocess
         proc_env = dict(os.environ)

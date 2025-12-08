@@ -1825,7 +1825,6 @@ def main(argv: List[str]) -> int:
                 connection.open()
             except Exception as e:
                 # Wrap connection errors with context
-                from pf_exceptions import PFConnectionError, format_exception_for_user
                 exc = PFConnectionError(
                     message=str(e),
                     host=hspec,
@@ -1851,7 +1850,6 @@ def main(argv: List[str]) -> int:
                     )
                     if rc != 0:
                         # Command failed - create detailed error
-                        from pf_exceptions import PFExecutionError, format_exception_for_user
                         exc = PFExecutionError(
                             message=f"Command failed with exit code {rc}",
                             task_name=tname,
@@ -1867,7 +1865,6 @@ def main(argv: List[str]) -> int:
                     raise
                 except Exception as e:
                     # Wrap unexpected errors
-                    from pf_exceptions import PFExecutionError, format_exception_for_user
                     exc = PFExecutionError(
                         message=f"Unexpected error executing command: {e}",
                         task_name=tname,
@@ -1889,12 +1886,10 @@ def main(argv: List[str]) -> int:
                 rc = fut.result()
             except PFException as e:
                 # Show formatted error for PF exceptions
-                from pf_exceptions import format_exception_for_user
                 print(format_exception_for_user(e, include_traceback=True), file=sys.stderr)
                 rc = 1
             except Exception as e:
                 # Wrap and show unexpected exceptions
-                from pf_exceptions import format_exception_for_user
                 print(format_exception_for_user(e, include_traceback=True), file=sys.stderr)
                 rc = 1
             rc_total = rc_total or rc
