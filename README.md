@@ -2,7 +2,7 @@
 
 A comprehensive polyglot WebAssembly development environment featuring the **pf** task runner (Fabric-based DSL) and multi-language WASM compilation demos.
 
-## 🚀 Quick Start
+## Quick Start
 
 **New to pf?** Check out the [**QUICKSTART.md**](QUICKSTART.md) for a comprehensive guide with examples!
 
