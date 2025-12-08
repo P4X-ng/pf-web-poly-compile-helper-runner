@@ -20,7 +20,7 @@ from pf_parser import (
     _find_pfyfile, _load_pfy_source_with_includes, parse_pfyfile_text,
     _normalize_hosts, _merge_env_hosts, _dedupe_preserve_order,
     _parse_host, _c_for, Task, BUILTINS, ENV_MAP,
-    _interpolate, _exec_line_fabric, list_dsl_tasks_with_desc
+    _interpolate, _exec_line_fabric, list_dsl_tasks_with_desc, get_alias_map
 )
 
 # Import new functionality
@@ -42,7 +42,7 @@ class PfRunner:
         
         try:
             # Load the main pfy source with includes
-            dsl_src = _load_pfy_source_with_includes(file_arg=pfyfile)
+            dsl_src, task_sources = _load_pfy_source_with_includes(file_arg=pfyfile)
             
             # Parse to find include statements and their tasks
             include_files = self._extract_include_files(dsl_src)
@@ -109,6 +109,35 @@ class PfRunner:
         
         # Discover subcommands first
         self.discover_subcommands()
+        
+        # Check if we need to resolve an alias
+        # First, extract file argument if present (before any command)
+        file_arg = None
+        args_copy = list(args)
+        i = 0
+        while i < len(args_copy):
+            if args_copy[i] in ('-f', '--file') and i + 1 < len(args_copy):
+                file_arg = args_copy[i + 1]
+                i += 2
+            elif args_copy[i].startswith('--file='):
+                file_arg = args_copy[i].split('=', 1)[1]
+                i += 1
+            elif not args_copy[i].startswith('-'):
+                # Found a non-option argument, check if it's an alias
+                builtins = {'list', 'help', 'run', 'prune', 'debug-on', 'debug-off'}
+                if args_copy[i] not in builtins:
+                    try:
+                        alias_map = get_alias_map(file_arg=file_arg)
+                        if args_copy[i] in alias_map:
+                            # Replace alias with actual task name and prefix with 'run'
+                            task_name = alias_map[args_copy[i]]
+                            args = args[:i] + ['run', task_name] + args[i+1:]
+                    except Exception:
+                        # If alias resolution fails, continue with normal parsing
+                        pass
+                break
+            else:
+                i += 1
         
         # Parse arguments
         try:
