@@ -146,37 +146,7 @@ end
 
 task generate-libfuzzer-template
   describe Generate libfuzzer harness template (output=fuzz_target.c, function=target_function)
-  shell mkdir -p ${output_dir:-./fuzzing}
-  shell cat > ${output:-${output_dir:-./fuzzing}/fuzz_target.c} << 'EOF'
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-
-// Your target function to fuzz
-// extern int target_function(const uint8_t *data, size_t size);
-
-// libfuzzer entry point
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    if (size == 0) return 0;
-    
-    // Call your target function
-    // target_function(data, size);
-    
-    // Example: Test string functions
-    if (size > 10) {
-        char buffer[256];
-        if (size < sizeof(buffer)) {
-            memcpy(buffer, data, size);
-            buffer[size] = '\0';
-        }
-    }
-    
-    return 0;
-}
-EOF
-  shell echo "✅ Generated libfuzzer template: ${output:-${output_dir:-./fuzzing}/fuzz_target.c}"
-  shell echo "Edit the file and implement your fuzzing logic"
-  shell echo "Build with: pf build-libfuzzer-target source=${output:-${output_dir:-./fuzzing}/fuzz_target.c}"
+  shell bash tools/fuzzing/generate-template.sh
 end
 
 # ============================================================================
@@ -282,92 +252,7 @@ end
 
 task create-fuzzing-example
   describe Create example fuzzing target for demonstration
-  shell mkdir -p demos/fuzzing/examples
-  shell cat > demos/fuzzing/examples/vulnerable.c << 'EOF'
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
-// Vulnerable function with multiple bugs for fuzzing demo
-int parse_input(const char *input, size_t len) {
-    char buffer[64];
-    
-    // Bug 1: Buffer overflow
-    if (len > 10 && input[0] == 'A') {
-        memcpy(buffer, input, len);  // Unsafe copy
-    }
-    
-    // Bug 2: Null pointer dereference
-    if (len > 5 && memcmp(input, "CRASH", 5) == 0) {
-        char *ptr = NULL;
-        *ptr = 'X';
-    }
-    
-    // Bug 3: Integer overflow leading to heap overflow
-    if (len > 3 && input[0] == 'H' && input[1] == 'E' && input[2] == 'A' && input[3] == 'P') {
-        int size = input[4] * 256;  // Can overflow
-        char *heap_buf = malloc(size);
-        memcpy(heap_buf, input + 5, len - 5);  // Heap overflow
-        free(heap_buf);
-    }
-    
-    return 0;
-}
-
-#ifdef LIBFUZZER
-// libfuzzer harness
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    if (size > 0) {
-        parse_input((const char*)data, size);
-    }
-    return 0;
-}
-#else
-// AFL++ harness (stdin)
-int main(int argc, char **argv) {
-    char buffer[1024];
-    size_t len = fread(buffer, 1, sizeof(buffer), stdin);
-    parse_input(buffer, len);
-    return 0;
-}
-#endif
-EOF
-  shell echo "✅ Created vulnerable.c"
-  shell cat > demos/fuzzing/examples/README.md << 'EOF'
-# Fuzzing Examples
-
-This directory contains example programs for demonstrating fuzzing capabilities.
-
-## vulnerable.c
-
-A deliberately vulnerable program with multiple bug classes:
-- Buffer overflow
-- Null pointer dereference
-- Heap overflow
-
-### Build for libfuzzer:
-```bash
-pf build-libfuzzer-target source=demos/fuzzing/examples/vulnerable.c output=demos/fuzzing/examples/fuzzer
-```
-
-### Build for AFL++:
-```bash
-pf build-afl-target source=demos/fuzzing/examples/vulnerable.c output=demos/fuzzing/examples/vulnerable_afl
-```
-
-### Run libfuzzer:
-```bash
-pf run-libfuzzer target=demos/fuzzing/examples/fuzzer corpus=demos/fuzzing/corpus time=60
-```
-
-### Run AFL++:
-```bash
-pf afl-fuzz target=demos/fuzzing/examples/vulnerable_afl input=demos/fuzzing/in output=demos/fuzzing/out
-```
-EOF
-  shell echo "✅ Created README.md"
-  shell echo ""
-  shell echo "Example created in demos/fuzzing/examples/"
+  shell bash tools/fuzzing/create-examples.sh
 end
 
 task demo-fuzzing
@@ -455,10 +340,4 @@ task fuzzing-help
   shell echo ""
   shell echo "For more info: https://llvm.org/docs/LibFuzzer.html"
   shell echo "              https://aflplus.plus/"
-end
-
-[alias fuzz-help]
-task fuzz-help
-  describe Alias for fuzzing-help
-  shell pf fuzzing-help
 end
