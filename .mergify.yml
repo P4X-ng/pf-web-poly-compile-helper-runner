@@ -6,3 +6,4 @@ priority_rules:
           - label = automated
           - base = main
     allow_checks_interruption: true
+queue_rules: []
