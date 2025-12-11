@@ -27,7 +27,14 @@ jobs:
         run: |
           python -m playwright install
 
-
+      # Add test generation logic or update workflow purpose
+      - name: Check for Existing Tests
+        run: |
+          if [ ! -d "tests" ] || [ -z "$(find tests -name '*test*.py' -o -name '*_test.py')" ]; then
+            echo "No Playwright tests found. Manual test creation required."
+            echo "Consider updating workflow name to reflect actual functionality."
+            exit 1
+          fi
 
       - name: Run Playwright Tests
         run: |
