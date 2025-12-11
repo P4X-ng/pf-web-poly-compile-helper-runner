@@ -30,9 +30,15 @@ jobs:
       - name: Run Playwright Tests
         run: |
           pytest tests/ || exit 1
+        continue-on-error: false
+
+      # Add placeholder for fix logic or update workflow purpose
+      - name: Handle Test Failures
+        if: failure()
+        run: |
+          echo "Test failures detected. Manual review required."
+          echo "Consider updating workflow name to remove 'Auto-fix' reference."
         continue-on-error: true
-
-
 
 
 
