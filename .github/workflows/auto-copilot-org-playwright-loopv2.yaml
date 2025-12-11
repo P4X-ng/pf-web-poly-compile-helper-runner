@@ -40,8 +40,6 @@ jobs:
           echo "Consider updating workflow name to remove 'Auto-fix' reference."
         continue-on-error: true
 
-
-
       - name: Create Pull Request for Automated Fixes
         uses: peter-evans/create-pull-request@main
         with:

@@ -45,8 +45,6 @@ jobs:
           echo "Consider implementing custom fix logic or removing auto-fix workflow."
         continue-on-error: true
 
-
-
       # Create PR with fixes (if any)
       - name: Create Pull Request for Automated Fixes
         uses: peter-evans/create-pull-request@main
