@@ -47,6 +47,7 @@ jobs:
 
       # Create PR with fixes (if any)
       - name: Create Pull Request for Automated Fixes
+        if: success()
         uses: peter-evans/create-pull-request@main
         with:
           branch: "copilot/playwright-fixes"
@@ -57,6 +58,7 @@ jobs:
 
       # Automerge PR if passing
       - name: Automerge PR if checks pass
+        if: success()
         uses: pascalgn/automerge-action@main
         with:
           merge-method: squash
