@@ -6,6 +6,8 @@ A comprehensive polyglot WebAssembly development environment featuring the **pf*
 
 **New to pf?** Check out the [**QUICKSTART.md**](QUICKSTART.md) for a comprehensive guide with examples!
 
+**Want powerful combined workflows?** See [**SMART-WORKFLOWS.md**](docs/SMART-WORKFLOWS.md) for intelligent tool combinations!
+
 The QUICKSTART covers:
 - All parameter passing formats (4 different ways!)
 - Task definitions with examples
@@ -14,6 +16,29 @@ The QUICKSTART covers:
 - Build system helpers
 - Remote execution
 - And much more!
+
+### 🚀 NEW: Smart Workflows (Round 2)
+
+**Do less, but do it smart!** New smart workflows combine multiple tools intelligently:
+
+```bash
+# Vulnerability discovery in one command
+pf vuln-discover binary=/path/to/binary    # or: pf vd binary=./target
+
+# Secure build pipeline with auto-testing
+pf build-secure release=true               # or: pf bs release=true
+
+# Deep binary analysis with debugging
+pf debug-deep-dive binary=./app interactive=true   # or: pf dd binary=./app
+
+# Complete web security testing
+pf web-security-full-stack                 # or: pf wsfs
+
+# Smart kernel fuzzing
+pf kernel-smart-fuzz binary=./module       # or: pf ksf binary=./module
+```
+
+See [**Smart Workflows Guide**](docs/SMART-WORKFLOWS.md) for complete documentation.
 
 ## Overview
 
@@ -76,6 +101,39 @@ pf rest-dev        # or use the alias: pf rdev
 - **Status Tracking**: Monitor build progress and retrieve detailed logs
 - **Backward Compatibility**: Maintains static file serving for existing web demo
 - **Multi-language Support**: API endpoints for Rust, C, Fortran, and WAT builds
+
+### Smart Integrated Workflows 🎯 (NEW!)
+**One command to do it all!** Smart workflows automatically combine multiple tools to accomplish complex tasks intelligently:
+
+- **smart-binary-analysis**: Complete binary analysis (checksec → lift → analyze → debug-prep)
+- **smart-exploit-dev**: Intelligent exploit development (checksec → ROP gadgets → strategy recommendation)
+- **smart-security-test**: Comprehensive security testing (web scan + binary analysis + fuzzing)
+- **smart-kernel-analysis**: Kernel module vulnerability analysis (lift → parse-detect → complexity → fuzzing)
+- **smart-package-install**: Auto-format detection and package conversion
+- **smart-web-dev**: Complete web dev workflow (build → test → security-check → serve)
+
+**Quick Examples:**
+```bash
+# Analyze any binary comprehensively
+pf smart-binary-analysis binary=/path/to/binary
+
+# Develop exploits intelligently
+pf smart-exploit-dev binary=/path/to/vulnerable
+
+# Complete security assessment
+pf smart-security-test url=http://target.com binary=/path/to/backend
+
+# Kernel vulnerability research
+pf smart-kernel-analysis binary=/path/to/driver.ko
+
+# Smart web development
+pf smart-web-dev port=8080
+
+# Show all smart workflows
+pf smart-workflows-help
+```
+
+These workflows intelligently combine tools like checksec, binary lifting, ROP gadgets, debuggers, fuzzers, and security scanners to accomplish complex tasks with minimal effort.
 
 ### Automagic Builder
 The **automagic builder** is an intelligent build system that automatically detects your project type and runs the appropriate build command - no configuration needed! Just run `pf autobuild` and it handles the rest.
@@ -987,6 +1045,7 @@ npx playwright show-report
 ## Documentation
 
 - **🚀 QUICKSTART Guide**: See [`QUICKSTART.md`](QUICKSTART.md) - **Start here!** Comprehensive guide with examples of all features
+- **🔥 SMART WORKFLOWS Guide**: See [`docs/SMART-WORKFLOWS.md`](docs/SMART-WORKFLOWS.md) - **NEW!** Powerful tool combinations for efficient workflows
 - **pf-runner Documentation**: See [`pf-runner/README.md`](pf-runner/README.md) for comprehensive pf runner documentation
 - **REST API Guide**: See [`docs/REST-API.md`](docs/REST-API.md) for complete API documentation and examples
 - **Fuzzing & Sanitizers Guide**: See [`docs/FUZZING.md`](docs/FUZZING.md) for fuzzing, AFL++, and sanitizer documentation
@@ -1022,6 +1081,15 @@ Additional documentation in `pf-runner/`:
 
 | Command | Description |
 |---------|-------------|
+| **Smart Integrated Workflows (NEW!)** | |
+| `pf smart-binary-analysis binary=<path>` | **Complete binary analysis** (checksec → lift → analyze → debug-prep) |
+| `pf smart-exploit-dev binary=<path>` | **Intelligent exploit development** (checksec → ROP gadgets → strategy) |
+| `pf smart-security-test url=<url> binary=<path>` | **Comprehensive security testing** (web + binary + fuzzing) |
+| `pf smart-kernel-analysis binary=<path>` | **Kernel vulnerability analysis** (lift → parse-detect → complexity → fuzz) |
+| `pf smart-package-install package=<path>` | **Auto package format conversion** and installation |
+| `pf smart-web-dev [port=8080]` | **Complete web dev workflow** (build → test → security → serve) |
+| `pf smart-workflows-help` | Show all smart workflows and usage |
+| **Build and Development** | |
 | `pf autobuild` | **Automagic builder** - auto-detect and build any project |
 | `pf autobuild release=true` | Build in release/optimized mode |
 | `pf build_detect` | Detect build system without building |

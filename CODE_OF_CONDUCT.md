@@ -59,7 +59,18 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
+reported to the community leaders responsible for enforcement via GitHub issues.
+
+All complaints will be reviewed and investigated promptly and fairly.
+
+## Attribution
+
+This Code of Conduct is adapted from the [Contributor Covenant][homepage],
+version 2.1.
+
+[homepage]: https://www.contributor-covenant.org
 reported to the community leaders responsible for enforcement via GitHub issues
+or pull requests.
 or by contacting the project maintainers directly.
 
 All complaints will be reviewed and investigated promptly and fairly.
