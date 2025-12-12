@@ -17,6 +17,8 @@ def create_wrapper_script(name, sanitizer_flags, description):
 # Add debug info and frame pointers for better stack traces
 SANITIZER_FLAGS="{sanitizer_flags} -fno-omit-frame-pointer -g"
 
+# The sanitizer flags are needed for both compilation and linking
+exec clang $SANITIZER_FLAGS "$@"
 # Determine if we're compiling or linking
 if [[ "$*" == *"-c"* ]]; then
     # Compilation only - add sanitizer flags to CFLAGS
@@ -47,6 +49,8 @@ def create_cxx_wrapper(base_name, sanitizer_flags, description):
 # Add debug info and frame pointers for better stack traces
 SANITIZER_FLAGS="{sanitizer_flags} -fno-omit-frame-pointer -g"
 
+# The sanitizer flags are needed for both compilation and linking
+exec clang++ $SANITIZER_FLAGS "$@"
 # Determine if we're compiling or linking
 if [[ "$*" == *"-c"* ]]; then
     # Compilation only - add sanitizer flags to CXXFLAGS
@@ -70,6 +74,26 @@ def main():
     """Create all sanitizer wrapper scripts."""
     print("Creating sanitizer wrapper scripts...")
     
+    # Define sanitizers with their properties
+    sanitizers = [
+        ("asan", "address", "AddressSanitizer wrapper - detects memory errors"),
+        ("msan", "memory", "MemorySanitizer wrapper - detects uninitialized memory"),
+        ("ubsan", "undefined", "UndefinedBehaviorSanitizer wrapper - detects undefined behavior"),
+        ("tsan", "thread", "ThreadSanitizer wrapper - detects data races"),
+    ]
+    
+    # Create wrappers for each sanitizer
+    for short_name, flag_name, description in sanitizers:
+        create_wrapper_script(
+            f"clang-{short_name}",
+            f"-fsanitize={flag_name}",
+            description
+        )
+        create_cxx_wrapper(
+            f"clang-{short_name}",
+            f"-fsanitize={flag_name}",
+            description
+        )
     # AddressSanitizer
     create_wrapper_script(
         "clang-asan",
