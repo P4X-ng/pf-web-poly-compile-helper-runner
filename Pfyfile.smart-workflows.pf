@@ -1,790 +1,80 @@
-# Smart Integrated Workflows
-# Combined tool workflows that leverage multiple tools intelligently
-# This file represents "Round 1" of tightening tool integration
-
-# ============================================================================
-# Smart Binary Analysis Workflow
-# Combines: checksec, ROP analysis, pwntools, and exploitation
-# ============================================================================
-
-task smart-analyze-binary
-  describe Intelligent binary analysis combining multiple tools
-  describe Usage: pf smart-analyze-binary binary=/path/to/binary
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-
-# Smart Workflow Tasks for pf-runner
-# Round 2: Integration tightening - combining tools intelligently
-# These tasks demonstrate "doing less, but doing it smart" by creating
-# powerful workflows that combine multiple tools for awesome results
-
-# ============================================================================
-# Vulnerability Discovery Pipeline
-# Combines binary analysis, parse function detection, complexity analysis,
-# and exploit generation into one smart workflow
-# ============================================================================
-
-task vuln-discover
-  describe 🔍 Smart vulnerability discovery pipeline for binaries
-  describe Analyzes binary for vulnerabilities, finds parse functions, checks complexity, and generates exploit info
-
-  shell test -n "${binary}" || (echo "Error: binary parameter required. Usage: pf vuln-discover binary=/path/to/binary" && exit 1)
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     SMART VULNERABILITY DISCOVERY PIPELINE                   ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Target: ${binary}"
-  shell echo ""
-  shell echo "→ Phase 1: Binary Security Analysis"
-  shell pf debug-info binary=${binary} || echo "  ℹ️  Basic info only"
-  shell pf checksec-file file=${binary} || echo "  ℹ️  Security check skipped"
-  shell echo ""
-  shell echo "→ Phase 2: Automagic Parse Function Detection"
-  shell pf kernel-parse-detect binary=${binary} || echo "  ℹ️  No parse functions detected"
-  shell echo ""
-  shell echo "→ Phase 3: Complexity Analysis (finding dangerous patterns)"
-  shell pf kernel-complexity-analyze binary=${binary} || echo "  ℹ️  Complexity analysis skipped"
-  shell echo ""
-  shell echo "→ Phase 4: Exploit Information Gathering"
-  shell pf exploit-info binary=${binary} || echo "  ℹ️  Exploit info gathering skipped"
-  shell echo ""
-  shell echo "→ Phase 5: ROP Gadget Search"
-  shell pf rop-find-gadgets binary=${binary} output=/tmp/gadgets_${binary##*/}.txt || echo "  ℹ️  Gadget search skipped"
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     VULNERABILITY DISCOVERY COMPLETE                         ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "📋 Summary saved in /tmp/vuln_discover_${binary##*/}_summary.txt"
-end
-
-task vuln-discover-and-exploit
-  describe 🚀 Complete vulnerability discovery and exploit generation workflow
-  describe Discovers vulnerabilities, generates ROP chain, and creates exploit template
-
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     DISCOVER & EXPLOIT AUTOMATION                            ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell pf vuln-discover binary=${binary}
-  shell echo ""
-  shell echo "→ Generating ROP Chain..."
-  shell pf rop-chain-auto binary=${binary} output=/tmp/rop_chain_${binary##*/}.py || echo "  ℹ️  ROP chain generation skipped"
-  shell echo ""
-  shell echo "→ Creating Exploit Template..."
-  shell pf pwn-template-advanced binary=${binary} output=/tmp/exploit_${binary##*/}.py || echo "  ℹ️  Template generation skipped"
-  shell echo ""
-  shell echo "✅ Exploit artifacts ready in /tmp/"
-end
-
-# ============================================================================
-# Secure Build Pipeline
-# Combines autobuild, security scanning, testing, and containerization
-# into one smart workflow that ensures secure deployments
-# ============================================================================
-
-task build-secure
-  describe 🔒 Smart secure build pipeline with automatic testing and scanning
-  describe Builds project, runs security checks, tests, and containerizes if successful
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     SECURE BUILD PIPELINE                                    ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Phase 1: Detecting Build System..."
-  shell pf build_detect
-  shell echo ""
-  shell echo "→ Phase 2: Building Project..."
-  shell pf autobuild ${release:+release=true} ${jobs:+jobs=${jobs}}
-  shell echo ""
-  shell echo "→ Phase 3: Security Scanning Binaries..."
-  shell if [ -d "bin" ] || [ -d "build" ] || [ -d "target" ]; then
-  shell   echo "  Scanning build artifacts for security issues..."
-  shell   find bin build target -type f -executable 2>/dev/null | while read binary; do
-  shell     echo "    Checking: $binary"
-  shell     pf checksec-file file="$binary" 2>/dev/null || echo "      No security features found"
-  shell   done
-  shell else
-  shell   echo "  ℹ️  No standard build directories found, skipping binary scan"
-  shell fi
-  shell echo ""
-  shell echo "→ Phase 4: Running Tests..."
-  shell if [ -f "package.json" ]; then
-  shell   npm test 2>/dev/null || echo "  ℹ️  Tests skipped or unavailable"
-  shell elif [ -f "Cargo.toml" ]; then
-  shell   cargo test 2>/dev/null || echo "  ℹ️  Tests skipped or unavailable"
-  shell else
-  shell   echo "  ℹ️  No test framework detected"
-  shell fi
-  shell echo ""
-  shell echo "→ Phase 5: Containerization (optional)..."
-  shell if [ "${containerize}" = "true" ]; then
-  shell   pf auto-containerize || echo "  ℹ️  Containerization skipped"
-  shell else
-  shell   echo "  ℹ️  Containerization not requested (use containerize=true to enable)"
-  shell fi
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     SECURE BUILD COMPLETE                                    ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-end
-
-task build-secure-web
-  describe 🌐 Smart secure build pipeline for web applications
-  describe Builds web app, runs security scans, and starts dev server for testing
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     SECURE WEB BUILD PIPELINE                                ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Phase 1: Building Web Application..."
-  shell pf autobuild ${release:+release=true}
-  shell echo ""
-  shell echo "→ Phase 2: Security Scanning Web App..."
-  shell echo "  Starting development server..."
-  shell node tools/api-server.mjs ${dir:-demos/pf-web-polyglot-demo-plus-c/web} 8080 &
-  shell SERVER_PID=$!
-  shell sleep 5
-  shell echo "  Running security scan..."
-  shell pf security-scan url=http://localhost:8080 || echo "  ⚠️  Security scan found issues"
-  shell echo "  Stopping server..."
-  shell kill $SERVER_PID 2>/dev/null || true
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     SECURE WEB BUILD COMPLETE                                ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Start dev server with: pf web-dev"
-end
-
-# ============================================================================
-# Debug-to-Exploit Workflow
-# Combines debugging, disassembly, gadget finding, and exploit creation
-# for reverse engineering and exploit development
-# ============================================================================
-
-task debug-deep-dive
-  describe 🔬 Smart deep-dive debugging and analysis workflow
-  describe Disassembles binary, shows security features, finds gadgets, and starts debugger
-
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     DEEP DIVE DEBUGGING WORKFLOW                             ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Target: ${binary}"
-  shell echo ""
-  shell echo "→ Phase 1: Binary Information"
-  shell pf binary-info binary=${binary}
-  shell echo ""
-  shell echo "→ Phase 2: Security Feature Analysis"
-  shell pf checksec-file file=${binary}
-  shell echo ""
-  shell echo "→ Phase 3: Disassembly Preview"
-  shell pf disassemble binary=${binary} function=${function:-main}
-  shell echo ""
-  shell echo "→ Phase 4: ROP Gadget Analysis"
-  shell echo "  Searching for useful ROP gadgets..."
-  shell pf rop-find-gadgets binary=${binary} output=/tmp/gadgets_${binary##*/}.txt || echo "  ℹ️  Gadget search skipped"
-  shell echo ""
-  shell echo "→ Phase 5: String Analysis"
-  shell echo "  Interesting strings in binary:"
-  shell strings ${binary} | grep -E "(password|key|token|secret|flag|admin)" | head -10 || echo "  No interesting strings found"
-  shell echo ""
-  shell if [ "${interactive}" = "true" ]; then
-  shell   echo "→ Starting Interactive Debugger..."
-  shell   pf debug binary=${binary}
-  shell else
-  shell   echo "💡 Tip: Add interactive=true to start debugger"
-  shell   echo "   Example: pf debug-deep-dive binary=${binary} interactive=true"
-  shell fi
-end
-
-# ============================================================================
-# Binary Lifting and Analysis Pipeline
-# Combines binary lifting, LLVM optimization, and re-compilation
-# for binary analysis and transformation
-# ============================================================================
-
-task lift-analyze-recompile
-  describe 🏗️ Smart binary lifting, analysis, and recompilation workflow
-  describe Lifts binary to LLVM IR, analyzes/optimizes it, and recompiles
-
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     LIFT-ANALYZE-RECOMPILE WORKFLOW                          ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Phase 1: Binary Lifting to LLVM IR"
-  shell pf lift-binary-retdec binary=${binary} output=/tmp/${binary##*/}.ll
-  shell echo ""
-  shell echo "→ Phase 2: LLVM IR Analysis"
-  shell pf lift-inspect binary=${binary}
-  shell echo ""
-  shell echo "→ Phase 3: LLVM IR Optimization"
-  shell pf optimize-lifted-ir input=/tmp/${binary##*/}.ll output=/tmp/${binary##*/}_opt.ll
-  shell echo ""
-  shell echo "→ Phase 4: Recompilation to Native Binary"
-  shell echo "  Compiling optimized LLVM IR back to binary..."
-  shell clang /tmp/${binary##*/}_opt.ll -o /tmp/${binary##*/}_optimized 2>/dev/null && echo "  ✅ Optimized binary: /tmp/${binary##*/}_optimized" || echo "  ⚠️  Recompilation may require manual fixes"
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     LIFT-ANALYZE-RECOMPILE COMPLETE                          ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-end
-
-# ============================================================================
-# Container Development Workflow
-# Combines container build, testing, and deployment with smart defaults
-# ============================================================================
-
-task dev-containerized
-  describe 🐳 Smart containerized development workflow
-  describe Builds containers, runs tests inside them, and manages container lifecycle
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     CONTAINERIZED DEVELOPMENT WORKFLOW                       ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Phase 1: Building Container Images"
-  shell pf container-build-all
-  shell echo ""
-  shell echo "→ Phase 2: Starting Development Environment"
-  shell pf compose-up
-  shell echo ""
-  shell echo "→ Phase 3: Running Containerized Tests"
-  shell pf container-test || echo "  ℹ️  Tests skipped"
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     CONTAINERIZED DEV ENVIRONMENT READY                      ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "📋 Available commands:"
-  shell echo "   • pf compose-shell           - Open shell in container"
-  shell echo "   • pf compose-logs            - View container logs"
-  shell echo "   • pf compose-down            - Stop all containers"
-end
-
-# ============================================================================
-# Kernel Fuzzing Pipeline
-# Combines parse detection, complexity analysis, and in-memory fuzzing
-# for efficient kernel vulnerability discovery
-# ============================================================================
-
-task kernel-smart-fuzz
-  describe ⚡ Smart kernel fuzzing pipeline with automagic analysis
-  describe Detects parse functions, analyzes complexity, and runs fast in-memory fuzzing
-
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     SMART KERNEL FUZZING PIPELINE                            ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Phase 1: Automagic Analysis"
-  shell pf kernel-automagic-analysis binary=${binary}
-  shell echo ""
-  shell echo "→ Phase 2: Fast In-Memory Fuzzing"
-  shell if [ -n "${function}" ]; then
-  shell   echo "  Fuzzing specific function: ${function}"
-  shell   pf kernel-fuzz-in-memory binary=${binary} function=${function}
-  shell else
-  shell   echo "  Running comprehensive fuzzing on detected parse functions..."
-  shell   pf kernel-fuzz-in-memory binary=${binary}
-  shell fi
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     KERNEL FUZZING COMPLETE                                  ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-end
-
-# ============================================================================
-# Multi-Language Build and Test
-# Smart pipeline that detects languages in a polyglot project and builds all
-# ============================================================================
-
-task build-polyglot-smart
-  describe 🌍 Smart polyglot project builder
-  describe Automatically detects and builds all languages in the project
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     SMART POLYGLOT BUILD PIPELINE                            ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Detecting project languages..."
-  shell echo ""
-  shell if [ -f "Cargo.toml" ]; then
-  shell   echo "  ✓ Rust detected - building..."
-  shell   pf autobuild || echo "    ⚠️  Rust build failed"
-  shell fi
-  shell if [ -f "package.json" ]; then
-  shell   echo "  ✓ Node.js detected - building..."
-  shell   npm run build 2>/dev/null || npm install || echo "    ⚠️  Node.js build failed"
-  shell fi
-  shell if [ -f "Cargo.toml" ] && [ -d "demos/pf-web-polyglot-demo-plus-c" ]; then
-  shell   echo "  ✓ WASM polyglot project detected - building all languages..."
-  shell   pf web-build-all-wasm || echo "    ⚠️  WASM build failed"
-  shell fi
-  shell if [ -f "go.mod" ]; then
-  shell   echo "  ✓ Go detected - building..."
-  shell   go build ./... || echo "    ⚠️  Go build failed"
-  shell fi
-  shell if [ -f "pom.xml" ]; then
-  shell   echo "  ✓ Maven project detected - building..."
-  shell   mvn compile || echo "    ⚠️  Maven build failed"
-  shell fi
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     POLYGLOT BUILD COMPLETE                                  ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-end
-
-# ============================================================================
-# Web Security Full Stack Testing
-# Combines web build, deployment, security scanning, and fuzzing
-# ============================================================================
-
-task web-security-full-stack
-  describe 🛡️ Complete web application security testing workflow
-  describe Builds app, deploys it, runs comprehensive security tests, generates report
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     FULL STACK WEB SECURITY TESTING                          ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Phase 1: Building Web Application"
-  shell pf web-build-all
-  shell echo ""
-  shell echo "→ Phase 2: Starting Test Server"
-  shell node tools/api-server.mjs demos/pf-web-polyglot-demo-plus-c/web 8080 &
-  shell SERVER_PID=$!
-  shell sleep 5
-  shell echo ""
-  shell echo "→ Phase 3: Security Header Analysis"
-  shell pf security-check-headers url=http://localhost:8080 || echo "  ⚠️  Header issues found"
-  shell echo ""
-  shell echo "→ Phase 4: Vulnerability Scanning"
-  shell pf security-scan-verbose url=http://localhost:8080 || echo "  ⚠️  Vulnerabilities found"
-  shell echo ""
-  shell echo "→ Phase 5: Comprehensive Fuzzing"
-  shell pf security-fuzz-all url=http://localhost:8080 || echo "  ⚠️  Fuzzing found issues"
-  shell echo ""
-  shell echo "→ Phase 6: Generating JSON Report"
-  shell pf security-report url=http://localhost:8080 > /tmp/security_report_$(date +%Y%m%d_%H%M%S).json
-  shell echo "  Report saved to /tmp/security_report_*.json"
-  shell echo ""
-  shell echo "→ Cleanup: Stopping Test Server"
-  shell kill $SERVER_PID 2>/dev/null || true
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     WEB SECURITY TESTING COMPLETE                            ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-end
-
-# ============================================================================
-# Quick Aliases for Smart Workflows
-# ============================================================================
-
-[alias vd]
-task vd
-  describe Quick alias for vuln-discover
-  shell pf vuln-discover binary=${binary}
-end
-
-[alias bs]
-task bs
-  describe Quick alias for build-secure
-  shell pf build-secure ${release:+release=${release}} ${jobs:+jobs=${jobs}} ${containerize:+containerize=${containerize}}
-end
-
-[alias dd]
-task dd
-  describe Quick alias for debug-deep-dive
-  shell pf debug-deep-dive binary=${binary} ${function:+function=${function}} ${interactive:+interactive=${interactive}}
-end
-
-[alias ksf]
-task ksf
-  describe Quick alias for kernel-smart-fuzz
-  shell pf kernel-smart-fuzz binary=${binary} ${function:+function=${function}}
-end
-
-[alias wsfs]
-task wsfs
-  describe Quick alias for web-security-full-stack
-  shell pf web-security-full-stack
-end
-
-# ============================================================================
-# Smart Installation Workflows
-# Installs tools based on use case rather than individual packages
-# ============================================================================
-
-task install-dev-essentials
-  describe 🔧 Install essential development tools for all workflows
-  describe Installs core tools needed for most development scenarios
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     INSTALLING DEVELOPMENT ESSENTIALS                        ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Phase 1: Core pf Installation"
-  shell pf install-base || echo "  ℹ️  pf already installed"
-  shell echo ""
-  shell echo "→ Phase 2: Debugging Tools"
-  shell pf install-debuggers || echo "  ⚠️  Debugger installation failed"
-  shell echo ""
-  shell echo "→ Phase 3: Build Tools"
-  shell echo "  Checking build tools availability..."
-  shell which gcc && gcc --version | head -1 || echo "  ℹ️  GCC not found"
-  shell which clang && clang --version | head -1 || echo "  ℹ️  Clang not found"
-  shell which rustc && rustc --version || echo "  ℹ️  Rust not found"
-  shell which node && node --version || echo "  ℹ️  Node.js not found"
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     DEVELOPMENT ESSENTIALS INSTALLED                         ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "💡 Next steps:"
-  shell echo "   • For security research: pf install-security-researcher"
-  shell echo "   • For web development: pf install-web-developer"
-  shell echo "   • For exploit dev: pf install-exploit-developer"
-end
-
-task install-security-researcher
-  describe 🔐 Install complete security research toolkit
-  describe Everything needed for binary analysis, exploit dev, and vulnerability research
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     INSTALLING SECURITY RESEARCH TOOLKIT                     ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "This will install:"
-  shell echo "  • GDB, LLDB, pwndbg (debugging)"
-  shell echo "  • pwntools, ROPgadget, ropper (exploit dev)"
-  shell echo "  • checksec (binary security analysis)"
-  shell echo "  • RetDec (binary lifting)"
-  shell echo "  • Radare2, Ghidra (reverse engineering)"
-  shell echo "  • Security scanning tools"
-  shell echo ""
-  shell read -p "Continue? [Y/n] " -n 1 -r
-  shell echo
-  shell if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-  shell   echo "→ Installing debugging tools..."
-  shell   pf install-debuggers || echo "  ⚠️  Debugger installation failed"
-  shell   echo ""
-  shell   echo "→ Installing exploit development tools..."
-  shell   pf install-exploit-tools || echo "  ⚠️  Exploit tools installation failed"
-  shell   echo ""
-  shell   echo "→ Installing binary lifting tools..."
-  shell   pf install-lifting-tools || echo "  ⚠️  Lifting tools installation failed"
-  shell   echo ""
-  shell   echo "→ Installing reverse engineering tools..."
-  shell   pf install-radare2 || echo "  ℹ️  Radare2 installation skipped"
-  shell   pf install-ghidra || echo "  ℹ️  Ghidra installation skipped"
-  shell   echo ""
-  shell   echo "→ Installing security scanning tools..."
-  shell   pf install-security-tools || echo "  ℹ️  Security tools already installed"
-  shell   echo ""
-  shell   echo "╔══════════════════════════════════════════════════════════════╗"
-  shell   echo "║     SECURITY RESEARCH TOOLKIT INSTALLED                      ║"
-  shell   echo "╚══════════════════════════════════════════════════════════════╝"
-  shell   echo ""
-  shell   echo "🎯 Try these workflows:"
-  shell   echo "   pf vd binary=./target                  # Vulnerability discovery"
-  shell   echo "   pf dd binary=./target interactive=true # Deep debugging"
-  shell   echo "   pf ksf binary=./module                 # Kernel fuzzing"
-  shell else
-  shell   echo "Installation cancelled."
-  shell fi
-end
-
-task install-web-developer
-  describe 🌐 Install complete web development toolkit
-  describe Everything needed for web app development, WASM compilation, and security testing
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     INSTALLING WEB DEVELOPMENT TOOLKIT                       ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "This will install:"
-  shell echo "  • Core pf runner"
-  shell echo "  • Web security scanning tools"
-  shell echo "  • WASM build dependencies"
-  shell echo ""
-  shell echo "→ Installing core pf..."
-  shell pf install-base || echo "  ℹ️  pf already installed"
-  shell echo ""
-  shell echo "→ Installing web security tools..."
-  shell pf install-security-tools || echo "  ℹ️  Security tools already installed"
-  shell echo ""
-  shell echo "→ Checking WASM build tools..."
-  shell which wasm-pack && wasm-pack --version || echo "  ℹ️  wasm-pack not found (install with: cargo install wasm-pack)"
-  shell which emcc && emcc --version | head -1 || echo "  ℹ️  Emscripten not found"
-  shell which wat2wasm && wat2wasm --version || echo "  ℹ️  WABT not found"
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     WEB DEVELOPMENT TOOLKIT INSTALLED                        ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "🚀 Try these workflows:"
-  shell echo "   pf build-secure-web              # Secure web build"
-  shell echo "   pf wsfs                          # Full security testing"
-  shell echo "   pf web-dev                       # Start dev server"
-end
-
-task install-exploit-developer
-  describe 💥 Install complete exploit development toolkit
-  describe Everything needed for exploit development and binary exploitation
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     INSTALLING EXPLOIT DEVELOPMENT TOOLKIT                   ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Installing debugging tools..."
-  shell pf install-debuggers || echo "  ⚠️  Debugger installation failed"
-  shell echo ""
-  shell echo "→ Installing exploit development tools..."
-  shell pf install-exploit-tools || echo "  ⚠️  Exploit tools installation failed"
-  shell echo ""
-  shell echo "→ Installing binary injection tools..."
-  shell pf install-injection-tools || echo "  ⚠️  Injection tools installation failed"
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     EXPLOIT DEVELOPMENT TOOLKIT INSTALLED                    ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "💣 Try these workflows:"
-  shell echo "   pf vuln-discover-and-exploit binary=./target"
-  shell echo "   pf dd binary=./target interactive=true"
-  shell echo "   pf rop-demo                      # ROP demo"
-end
-
-task install-check-all
-  describe ✅ Check installation status of all tools
-  describe Comprehensive check of which tools are installed and working
-
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     CHECKING INSTALLATION STATUS                             ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "→ Core Tools"
-  shell which pf && echo "  ✓ pf installed" || echo "  ✗ pf not installed"
-  shell which python3 && python3 --version || echo "  ✗ Python 3 not found"
-  shell which node && node --version || echo "  ✗ Node.js not found"
-  shell echo ""
-  shell echo "→ Build Tools"
-  shell which gcc && echo "  ✓ GCC installed" || echo "  ✗ GCC not installed"
-  shell which clang && echo "  ✓ Clang installed" || echo "  ✗ Clang not installed"
-  shell which rustc && echo "  ✓ Rust installed" || echo "  ✗ Rust not installed"
-  shell which cargo && echo "  ✓ Cargo installed" || echo "  ✗ Cargo not installed"
-  shell which cmake && echo "  ✓ CMake installed" || echo "  ✗ CMake not installed"
-  shell echo ""
-  shell echo "→ Debugging Tools"
-  shell which gdb && echo "  ✓ GDB installed" || echo "  ✗ GDB not installed"
-  shell which lldb && echo "  ✓ LLDB installed" || echo "  ✗ LLDB not installed"
-  shell test -d "$HOME/.pwndbg" && echo "  ✓ pwndbg installed" || echo "  ✗ pwndbg not installed"
-  shell echo ""
-  shell echo "→ Exploit Development"
-  shell python3 -c "import pwn" 2>/dev/null && echo "  ✓ pwntools installed" || echo "  ✗ pwntools not installed"
-  shell which ROPgadget && echo "  ✓ ROPgadget installed" || echo "  ✗ ROPgadget not installed"
-  shell which ropper && echo "  ✓ ropper installed" || echo "  ✗ ropper not installed"
-  shell which checksec && echo "  ✓ checksec installed" || echo "  ✗ checksec not installed"
-  shell echo ""
-  shell echo "→ Reverse Engineering"
-  shell which r2 && echo "  ✓ Radare2 installed" || echo "  ✗ Radare2 not installed"
-  shell which retdec-decompiler && echo "  ✓ RetDec installed" || echo "  ✗ RetDec not installed"
-  shell test -d "$HOME/ghidra" && echo "  ✓ Ghidra installed" || echo "  ✗ Ghidra not installed"
-  shell echo ""
-  shell echo "→ WASM Tools"
-  shell which wasm-pack && echo "  ✓ wasm-pack installed" || echo "  ✗ wasm-pack not installed"
-  shell which emcc && echo "  ✓ Emscripten installed" || echo "  ✗ Emscripten not installed"
-  shell which wat2wasm && echo "  ✓ WABT installed" || echo "  ✗ WABT not installed"
-  shell echo ""
-  shell echo "→ Container Tools"
-  shell which podman && echo "  ✓ Podman installed" || echo "  ✗ Podman not installed"
-  shell which docker && echo "  ✓ Docker installed" || echo "  ✗ Docker not installed"
-  shell echo ""
-  shell echo "╔══════════════════════════════════════════════════════════════╗"
-  shell echo "║     CHECK COMPLETE                                           ║"
-  shell echo "╚══════════════════════════════════════════════════════════════╝"
-end
-
-# Quick aliases for installation workflows
-[alias ide]
-task ide
-  describe Quick alias for install-dev-essentials
-  shell pf install-dev-essentials
-end
-
-[alias isr]
-task isr
-  describe Quick alias for install-security-researcher
-  shell pf install-security-researcher
-end
-
-[alias iwd]
-task iwd
-  describe Quick alias for install-web-developer
-  shell pf install-web-developer
-end
-
-[alias ied]
-task ied
-  describe Quick alias for install-exploit-developer
-  shell pf install-exploit-developer
-end
-
-=======
 # Smart Workflows for Integrated Security Testing
 # Intelligent workflows that combine multiple tools automatically
 # Reduces cognitive load from 100+ individual tasks to smart, context-aware workflows
-# Combined from PRs #194, #195, #196
 
 # ============================================================================
 # Core Smart Workflows - The "Just Works" Tasks
 # ============================================================================
 
-task smart-detect-tools
-  describe Detect available security tools and their capabilities
-  shell node tools/orchestration/tool-detector.mjs --format json --output tools-capabilities.json
-  shell echo "Tool capabilities saved to tools-capabilities.json"
-  shell echo "Use 'pf smart-show-capabilities' to view available tools"
-end
-
-task smart-show-capabilities
-  describe Show detected tool capabilities in human-readable format
-  shell node tools/orchestration/tool-detector.mjs --format table
-end
-
-task smart-detect
-  describe Intelligently detect target type and recommend workflow
-  shell python3 tools/smart-workflows/target_detector.py ${target} ${format:+--format $format}
-end
-
 task smart-analyze
-  describe Comprehensive smart analysis of any target
-  shell test -n "${target}" || (echo "❌ Error: target parameter required" && exit 1)
-  shell echo "🧠 Smart Analysis starting for: ${target}"
-  shell python3 tools/smart-workflows/target_detector.py ${target} --format json > .smart_target_info.json
-  shell python3 tools/orchestration/smart_analyzer.py ${target} ${deep:+--deep-analysis} ${format:+--format $format} ${output:+--output $output}
+  describe 🧠 Smart binary analysis - automatically detects target type and runs appropriate analysis
+  describe Combines static analysis, dynamic analysis, and vulnerability detection
+  shell python3 tools/orchestration/smart_analyzer.py ${target} ${output:+--output $output} ${deep:+--deep-analysis} ${format:+--format $format}
 end
 
 task smart-exploit
-  describe  🎯 Smart exploit development - from binary to working exploit automatically
-  shell test -n "${binary}" || (echo "❌ Error: binary parameter required" && exit 1)
-  shell echo "💥 Smart Exploit Development: ${binary}"
+  describe 🎯 Smart exploit development - from binary to working exploit automatically
+  describe Combines checksec, ROP analysis, shellcode generation, and exploit templates
   shell python3 tools/orchestration/smart_exploiter.py ${binary} ${output:+--output $output} ${arch:+--arch $arch} ${technique:+--technique $technique}
 end
 
 task smart-fuzz
-  describe 🚀 Smart fuzzing - automatically detects target type and uses optimal strategy
-  shell test -n "${target}" || (echo "❌ Error: target parameter required" && exit 1)
-  shell python3 tools/smart-workflows/smart_fuzzer_selector.py ${target} ${duration:+--duration $duration} ${strategy:+--strategy $strategy}
+  describe 🚀 Smart fuzzing - automatically detects target type and uses optimal fuzzing strategy
+  describe Adapts between web fuzzing, binary fuzzing, and kernel fuzzing based on target
+  shell python3 tools/orchestration/smart_fuzzer.py ${target} ${duration:+--duration $duration} ${strategy:+--strategy $strategy} ${output:+--output $output}
 end
 
 task smart-security-test
-  describe 🔒 Smart security testing - comprehensive security assessment
-  shell test -n "${target}" || (echo "❌ Error: target parameter required" && exit 1)
-  shell python3 tools/smart-workflows/smart_scanner.py ${target} ${mode:+--mode $mode}
+  describe 🔒 Smart security testing - comprehensive security assessment with intelligent tool selection
+  describe Combines web security, binary analysis, and vulnerability testing
+  shell python3 tools/orchestration/smart_security_tester.py ${target} ${scope:+--scope $scope} ${output:+--output $output} ${report:+--report $report}
+end
+
+task smart-build-and-test
+  describe 🏗️ Smart build and security test - builds project and runs comprehensive security testing
+  describe Integrates automagic build system with security analysis and vulnerability testing
+  shell python3 tools/orchestration/smart_build_tester.py ${project:-.} ${build_type:+--build-type $build_type} ${security_level:+--security-level $security_level} ${output:+--output $output}
 end
 
 # ============================================================================
-# Intelligent Binary Analysis Workflows
+# Advanced Smart Workflows
 # ============================================================================
 
-task smart-binary-analysis
-  describe Complete automated binary analysis workflow (binary=path/to/binary)
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "🔍 Starting intelligent binary analysis for: ${binary}"
-  shell node tools/orchestration/workflow-engine.mjs binary-analysis --target "${binary}" --output "${output:-analysis-report.json}" --verbose
+task smart-vulnerability-research
+  describe 🔬 Smart vulnerability research - end-to-end vulnerability discovery workflow
+  describe Parse function detection → complexity analysis → targeted fuzzing → exploit development
+  shell python3 tools/orchestration/smart_vuln_researcher.py ${binary} ${source:+--source $source} ${output:+--output $output} ${techniques:+--techniques $techniques}
 end
 
-task smart-binary-exploit
-  describe Full binary analysis + exploit generation workflow (binary=path/to/binary)
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "💥 Starting binary exploitation workflow for: ${binary}"
-  shell node tools/orchestration/workflow-engine.mjs binary-exploit --target "${binary}" --output "${output:-exploit-report.json}" --generate-payloads
+task smart-container-exploit-test
+  describe 🐳 Smart container exploit testing - tests exploits across multiple distros automatically
+  describe Combines exploit development with multi-distro container testing and result correlation
+  shell python3 tools/orchestration/smart_container_tester.py ${exploit} ${distros:+--distros $distros} ${output:+--output $output} ${parallel:+--parallel $parallel}
 end
 
-# ============================================================================
-# One-Command Complete Workflows (from PR #196)
-# ============================================================================
-
-task autopwn
-  describe Complete binary exploitation: analysis + vulnerability discovery + exploit generation (binary=path/to/binary)
-  shell test -n "${binary}" || (echo "❌ Error: binary parameter required" && exit 1)
-  shell echo "🎯 AutoPwn: Complete binary exploitation workflow"
-  shell echo "Target: ${binary}"
-  shell echo ""
-  
-  # Phase 1: Basic Analysis
-  shell echo "📋 Phase 1: Basic Analysis"
-  shell pf unified-checksec binary="${binary}" || true
-  shell file "${binary}"
-  shell echo ""
-  
-  # Phase 2: Vulnerability Discovery
-  shell echo "🔍 Phase 2: Vulnerability Discovery"
-  shell pf debug-analyze-binary binary="${binary}" quick=true || true
-  shell strings "${binary}" | grep -E "(password|admin|flag|key)" | head -10 || true
-  shell echo ""
-  
-  # Phase 3: Exploitation Prep
-  shell echo "💥 Phase 3: Exploitation Preparation"
-  shell pf rop-find-gadgets binary="${binary}" limit=20 || true
-  shell pf create-exploit-template binary="${binary}" type=buffer_overflow || true
-  shell echo ""
-  
-  shell echo "✅ AutoPwn complete! Check generated exploit template and ROP gadgets."
-end
-
-task autoweb
-  describe Complete web security assessment: discovery + scanning + exploitation (url=http://target)
-  shell test -n "${url}" || (echo "❌ Error: url parameter required" && exit 1)
-  shell echo "🌐 AutoWeb: Complete web security assessment"
-  shell echo "Target: ${url}"
-  shell echo ""
-  
-  # Phase 1: Discovery
-  shell echo "📋 Phase 1: Service Discovery"
-  shell curl -I "${url}" 2>/dev/null | head -10 || echo "Basic HTTP check failed"
-  shell echo ""
-  
-  # Phase 2: Security Scanning
-  shell echo "🔍 Phase 2: Security Scanning"
-  shell pf security-scan url="${url}" checks=sqli,xss,cmdi || true
-  shell echo ""
-  
-  # Phase 3: Fuzzing
-  shell echo "💥 Phase 3: Vulnerability Fuzzing"
-  shell pf security-fuzz url="${url}" type=all || true
-  shell echo ""
-  
-  shell echo "✅ AutoWeb complete! Review security scan and fuzzing results."
+task smart-firmware-analysis
+  describe 🔧 Smart firmware analysis - comprehensive firmware security assessment
+  describe Combines firmware extraction, binary lifting, vulnerability analysis, and exploit development
+  shell python3 tools/orchestration/smart_firmware_analyzer.py ${device:+--device $device} ${firmware:+--firmware $firmware} ${output:+--output $output} ${deep:+--deep-analysis}
 end
 
 # ============================================================================
-# Unified Tool Interfaces
-# ============================================================================
-
-task unified-checksec
-  describe 🛡️ Unified binary security analysis - smart checksec that chooses best approach
-  shell python3 tools/unified/unified_checksec.py ${binary} ${format:+--format $format} ${batch:+--batch} ${output:+--output $output}
-end
-
-task checksec-unified
-  describe Unified binary security analysis (replaces all other checksec implementations)
-  shell test -n "${binary}" || (echo "Error: binary parameter required. Usage: pf checksec-unified binary=/path/to/binary" && exit 1)
-  shell python3 tools/unified/unified_checksec.py ${binary} ${json:+--json} ${output:+--output $output}
-end
-
-# ============================================================================
-# Workflow Management
+# Workflow Management and Orchestration
 # ============================================================================
 
 task workflow-status
   describe 📊 Show status of running smart workflows
   shell python3 tools/orchestration/workflow_manager.py --status ${workflow_id:+--workflow-id $workflow_id}
+end
+
+task workflow-resume
+  describe ▶️ Resume interrupted smart workflow
+  shell python3 tools/orchestration/workflow_manager.py --resume ${workflow_id} ${step:+--from-step $step}
+end
+
+task workflow-cancel
+  describe ⏹️ Cancel running smart workflow
+  shell python3 tools/orchestration/workflow_manager.py --cancel ${workflow_id}
 end
 
 task workflow-history
@@ -793,22 +83,55 @@ task workflow-history
 end
 
 # ============================================================================
-# Quick Aliases for Power Users
+# Smart Tool Selection and Adaptation
 # ============================================================================
 
-task apwn
-  describe Alias for autopwn
-  shell pf autopwn binary=${binary}
+task smart-detect-target
+  describe 🎯 Detect target type and recommend appropriate workflows
+  shell python3 tools/orchestration/target_detector.py ${target} ${verbose:+--verbose} ${json:+--json}
 end
 
-task aweb
-  describe Alias for autoweb
-  shell pf autoweb url=${url}
+task smart-recommend
+  describe 💡 Recommend optimal tools and workflows for given target
+  shell python3 tools/orchestration/smart_recommender.py ${target} ${goal:+--goal $goal} ${constraints:+--constraints $constraints}
 end
 
-task stools
-  describe Alias for smart-detect-tools
-  shell pf smart-detect-tools
+task smart-benchmark
+  describe ⚡ Benchmark tool performance and update selection algorithms
+  shell python3 tools/orchestration/tool_benchmarker.py ${tools:+--tools $tools} ${targets:+--targets $targets} ${output:+--output $output}
+end
+
+# ============================================================================
+# Unified Tool Interfaces (Consolidation Layer)
+# ============================================================================
+
+task unified-checksec
+  describe 🛡️ Unified binary security analysis - smart checksec that chooses best approach
+  shell python3 tools/unified/unified_checksec.py ${binary} ${format:+--format $format} ${batch:+--batch} ${output:+--output $output}
+end
+
+task unified-debug
+  describe 🐛 Unified debugging interface - automatically selects GDB/LLDB and configures optimally
+  shell python3 tools/unified/unified_debugger.py ${binary} ${debugger:+--debugger $debugger} ${args:+--args "$args"} ${script:+--script $script}
+end
+
+task unified-fuzz
+  describe 🎲 Unified fuzzing interface - adapts fuzzing strategy to target type
+  shell python3 tools/unified/unified_fuzzer.py ${target} ${type:+--type $type} ${duration:+--duration $duration} ${output:+--output $output}
+end
+
+task unified-exploit
+  describe 💥 Unified exploit development - combines all exploit development tools intelligently
+  shell python3 tools/unified/unified_exploiter.py ${binary} ${technique:+--technique $technique} ${output:+--output $output} ${test:+--test}
+end
+
+# ============================================================================
+# Smart Workflow Configuration and Help
+# ============================================================================
+
+task smart-config
+  describe ⚙️ Configure smart workflow preferences and tool selection
+  shell python3 tools/orchestration/workflow_config.py ${setting:+--set $setting} ${value:+--value "$value"} ${list:+--list} ${reset:+--reset}
 end
 
 task smart-help
@@ -823,543 +146,97 @@ task smart-help
   shell echo "  pf smart-exploit binary=<file>           # Automated exploit development"
   shell echo "  pf smart-fuzz target=<file|url>          # Adaptive fuzzing"
   shell echo "  pf smart-security-test target=<file|url> # Comprehensive security testing"
-  shell echo ""
-  shell echo "🎯 ONE-COMMAND WORKFLOWS:"
-  shell echo ""
-  shell echo "  pf autopwn binary=<file>                 # Complete binary exploitation"
-  shell echo "  pf autoweb url=<url>                     # Complete web security assessment"
+  shell echo "  pf smart-build-and-test [project=<dir>]  # Build + security analysis"
   shell echo ""
   shell echo "🔬 ADVANCED WORKFLOWS:"
   shell echo ""
-  shell echo "  pf smart-detect target=<file>            # Detect target type"
-  shell echo "  pf smart-binary-analysis binary=<file>   # Full binary analysis"
+  shell echo "  pf smart-vulnerability-research binary=<file>  # End-to-end vuln discovery"
+  shell echo "  pf smart-container-exploit-test exploit=<file> # Multi-distro exploit testing"
+  shell echo "  pf smart-firmware-analysis device=<dev>       # Firmware security assessment"
+  shell echo ""
+  shell echo "🎯 TARGET DETECTION & RECOMMENDATIONS:"
+  shell echo ""
+  shell echo "  pf smart-detect-target target=<file>     # Detect target type"
+  shell echo "  pf smart-recommend target=<file>         # Get workflow recommendations"
   shell echo ""
   shell echo "🛠️ UNIFIED TOOL INTERFACES:"
   shell echo ""
   shell echo "  pf unified-checksec binary=<file>        # Smart binary security analysis"
+  shell echo "  pf unified-debug binary=<file>           # Smart debugging interface"
+  shell echo "  pf unified-fuzz target=<file>            # Smart fuzzing interface"
+  shell echo "  pf unified-exploit binary=<file>         # Smart exploit development"
   shell echo ""
   shell echo "📊 WORKFLOW MANAGEMENT:"
   shell echo ""
   shell echo "  pf workflow-status                       # Show running workflows"
+  shell echo "  pf workflow-resume workflow_id=<id>      # Resume interrupted workflow"
   shell echo "  pf workflow-history                      # Show execution history"
   shell echo ""
-  shell echo "⚡ QUICK ALIASES:"
+  shell echo "⚙️ CONFIGURATION:"
   shell echo ""
-  shell echo "  pf apwn binary=<file>                    # Short for autopwn"
-  shell echo "  pf aweb url=<url>                        # Short for autoweb"
-  shell echo "  pf stools                                # Short for smart-detect-tools"
+  shell echo "  pf smart-config --list                   # Show current configuration"
+  shell echo "  pf smart-config setting=<name> value=<val> # Configure preferences"
+  shell echo ""
+  shell echo "💡 EXAMPLES:"
+  shell echo ""
+  shell echo "  # Analyze any binary intelligently"
+  shell echo "  pf smart-analyze target=/bin/ls"
+  shell echo ""
+  shell echo "  # Develop exploit automatically"
+  shell echo "  pf smart-exploit binary=./vulnerable"
+  shell echo ""
+  shell echo "  # Fuzz web application or binary"
+  shell echo "  pf smart-fuzz target=http://localhost:8080"
+  shell echo "  pf smart-fuzz target=./binary"
+  shell echo ""
+  shell echo "  # Complete security assessment"
+  shell echo "  pf smart-security-test target=./myapp"
+  shell echo ""
+  shell echo "  # Build and test project security"
+  shell echo "  pf smart-build-and-test project=./myproject"
   shell echo ""
   shell echo "For detailed documentation, see: docs/SMART-WORKFLOWS.md"
-# Smart Integrated Workflows
-# Combines multiple tools intelligently for common security and analysis tasks
-
-# ============================================================================
-# Smart Binary Analysis Workflow
-# ============================================================================
-
-task smart-binary-analysis
-  describe Comprehensive binary analysis: checksec → lift → analyze → debug-prep
-  describe Automatically analyzes a binary using all available tools intelligently
-  shell_lang bash
-  shell test -n "${binary}" || (echo "Error: binary parameter required. Usage: pf smart-binary-analysis binary=/path/to/binary" && exit 1)
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART BINARY ANALYSIS WORKFLOW                   ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "[1/5] Binary Security Analysis (checksec)..."
-  shell python3 tools/security/checksec.py ${binary} || echo "⚠ checksec failed"
-  shell echo ""
-  shell echo "[2/5] Identifying Exploit Vectors..."
-  shell python3 pf-runner/pf_main.py run exploit-info binary=${binary} 2>/dev/null || echo "⚠ exploit-info unavailable"
-  shell echo ""
-  shell echo "[3/5] ROP Gadget Analysis..."
-  shell python3 tools/exploit/ropgadget_wrapper.py --analyze ${binary} 2>/dev/null || echo "⚠ ROP analysis unavailable (install with: pf install-ropgadget)"
-  shell echo ""
-  shell echo "[4/5] Searching for Common Exploit Patterns..."
-  shell python3 tools/exploit/ropgadget_wrapper.py --specific ${binary} --patterns "pop rdi,pop rsi,pop rdx,syscall" 2>/dev/null || echo "⚠ Pattern search unavailable"
-  shell echo ""
-  shell echo "[5/5] Generating Quick Exploit Template..."
-  shell python3 tools/exploit/pwntools_wrapper.py --template ${binary}_exploit.py --binary ${binary} 2>/dev/null && echo "✓ Exploit template: ${binary}_exploit.py" || echo "⚠ Template generation unavailable (install with: pf install-pwntools)"
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         ANALYSIS COMPLETE                                 ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Next steps:"
-  shell echo "  - Review ${binary}_exploit.py for exploit development"
-  shell echo "  - Run: pf smart-exploit-binary binary=${binary} for automated exploit"
-  shell echo "  - Run: pf smart-fuzz-binary binary=${binary} for fuzzing"
-  shell echo "Target: ${binary}"
-  shell echo ""
-  shell echo "=== Phase 1: Security Check (checksec) ==="
-  shell python3 tools/exploit/checksec_batch.py ${binary} --output /tmp/smart-analysis-${$}.json || echo "Checksec analysis failed, continuing..."
-  shell echo ""
-  shell echo "=== Phase 2: Binary Information ==="
-  shell file ${binary} || echo "File type detection failed"
-  shell readelf -h ${binary} 2>/dev/null || echo "Not an ELF binary, skipping readelf"
-  shell echo ""
-  shell echo "=== Phase 3: Binary Lifting to LLVM IR ==="
-  shell pf lift-inspect binary=${binary} || echo "Binary lifting not available, skipping..."
-  shell echo ""
-  shell echo "=== Phase 4: Analysis Summary ==="
-  shell echo "Analysis complete! Results:"
-  shell echo "  - Security features checked"
-  shell echo "  - Binary format analyzed"
-  shell echo "  - LLVM IR lifting attempted"
-  shell echo ""
-  shell echo "Next steps:"
-  shell echo "  pf debug binary=${binary}           # Start interactive debugging"
-  shell echo "  pf rop-gadgets binary=${binary}     # Find ROP gadgets"
-  shell echo "  pf lift-binary-retdec binary=${binary}  # Full LLVM lifting"
 end
 
 # ============================================================================
-# Smart Exploit Development Workflow
-# Combines: vulnerability detection, exploit generation, and testing
+# Legacy Compatibility and Migration
 # ============================================================================
 
-task smart-exploit-binary
-  describe Automated exploit development combining multiple techniques
-  describe Usage: pf smart-exploit-binary binary=/path/to/binary
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-# ============================================================================
+task migrate-to-smart
+  describe 🔄 Migrate from individual tools to smart workflows (shows migration guide)
+  shell python3 tools/orchestration/migration_helper.py ${show_mapping:+--show-mapping} ${interactive:+--interactive}
+end
 
-task smart-exploit-dev
-  describe Intelligent exploit development: checksec → rop-gadgets → exploit-gen
-  describe Automatically determines best exploitation strategy based on binary protections
-  shell_lang bash
-  shell test -n "${binary}" || (echo "Error: binary parameter required. Usage: pf smart-exploit-dev binary=/path/to/binary" && exit 1)
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART EXPLOIT DEVELOPMENT WORKFLOW                ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
+task smart-demo
+  describe 🎬 Demonstrate smart workflows with example targets
+  shell echo "╔════════════════════════════════════════════════════════════╗"
+  shell echo "║                SMART WORKFLOWS DEMO                       ║"
+  shell echo "╚════════════════════════════════════════════════════════════╝"
   shell echo ""
-  shell echo "[1/4] Analyzing binary security features..."
-  shell python3 tools/security/checksec.py ${binary} --json > /tmp/${binary##*/}_checksec.json || echo "⚠ checksec failed"
+  shell echo "Building demo targets..."
+  shell pf build-debug-examples
   shell echo ""
-  shell echo "[2/4] Building ROP chain..."
-  shell python3 tools/exploit/ropgadget_wrapper.py --build-chain ${binary} --output /tmp/${binary##*/}_rop_chain.py 2>/dev/null || echo "⚠ ROP chain generation unavailable"
+  shell echo "[1/4] Smart Analysis Demo:"
+  shell pf smart-analyze target=demos/debugging/examples/bin/vulnerable
   shell echo ""
-  shell echo "[3/4] Generating exploit template with ROP integration..."
-  shell python3 tools/exploit/pwntools_wrapper.py --template /tmp/${binary##*/}_full_exploit.py --binary ${binary} 2>/dev/null || echo "⚠ Template generation unavailable"
+  shell echo "[2/4] Smart Exploit Development Demo:"
+  shell pf smart-exploit binary=demos/debugging/examples/bin/vulnerable output=demo_exploit.py
   shell echo ""
-  shell echo "[4/4] Creating test harness..."
-  shell echo "#!/usr/bin/env python3" > /tmp/${binary##*/}_test_exploit.py
-  shell echo "# Generated test harness for ${binary}" >> /tmp/${binary##*/}_test_exploit.py
-  shell echo "# Run: python3 /tmp/${binary##*/}_test_exploit.py" >> /tmp/${binary##*/}_test_exploit.py
-  shell echo "" >> /tmp/${binary##*/}_test_exploit.py
-  shell echo "import os" >> /tmp/${binary##*/}_test_exploit.py
-  shell echo "print('Test harness created. Integrate ROP chain and exploit template.')" >> /tmp/${binary##*/}_test_exploit.py
-  shell chmod +x /tmp/${binary##*/}_test_exploit.py
+  shell echo "[3/4] Smart Security Testing Demo:"
+  shell pf smart-security-test target=demos/debugging/examples/bin/vulnerable
   shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         EXPLOIT DEVELOPMENT COMPLETE                      ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
+  shell echo "[4/4] Smart Build and Test Demo:"
+  shell pf smart-build-and-test project=demos/debugging/examples
+  shell echo ""
+  shell echo "╔════════════════════════════════════════════════════════════╗"
+  shell echo "║                    DEMO COMPLETE                          ║"
+  shell echo "╚════════════════════════════════════════════════════════════╝"
   shell echo ""
   shell echo "Generated files:"
-  shell echo "  - /tmp/${binary##*/}_checksec.json (security analysis)"
-  shell echo "  - /tmp/${binary##*/}_rop_chain.py (ROP chain)"
-  shell echo "  - /tmp/${binary##*/}_full_exploit.py (exploit template)"
-  shell echo "  - /tmp/${binary##*/}_test_exploit.py (test harness)"
-end
-
-# ============================================================================
-# Smart Fuzzing Workflow
-# Combines: binary fuzzing, crash analysis, and exploit generation
-# ============================================================================
-
-task smart-fuzz-binary
-  describe Intelligent fuzzing with automatic crash analysis
-  describe Usage: pf smart-fuzz-binary binary=/path/to/binary [duration=60]
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART FUZZING WORKFLOW                            ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
+  shell test -f demo_exploit.py && echo "  - demo_exploit.py (automated exploit)" || true
   shell echo ""
-  shell echo "[1/3] Analyzing binary for fuzzing targets..."
-  shell python3 tools/security/checksec.py ${binary}
-  shell echo ""
-  shell echo "[2/3] Running targeted fuzzing (${duration:-60} seconds)..."
-  shell echo "⚠ Basic fuzzing implementation - full fuzzing infrastructure coming soon"
-  shell echo "  Tip: Use 'pf fuzz-stack-overflow binary=${binary}' for specific vulnerability types"
-  shell echo ""
-  shell echo "[3/3] Analyzing crashes and generating exploits..."
-  shell echo "⚠ Crash analysis will be integrated in future releases"
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         FUZZING WORKFLOW COMPLETE                         ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Next steps:"
-  shell echo "  - Check for crashes in fuzzing output"
-  shell echo "  - Run: pf smart-analyze-binary binary=${binary} on crash binaries"
-  shell echo "  - Use practice binaries: pf build-practice-binaries"
-end
-
-# ============================================================================
-# Smart Web Security Testing Workflow
-# Combines: scanning, fuzzing, and exploit generation
-# ============================================================================
-
-task smart-test-web-security
-  describe Comprehensive web security testing combining scanner and fuzzer
-  describe Usage: pf smart-test-web-security url=http://target:port
-  shell test -n "${url}" || (echo "Error: url parameter required" && exit 1)
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART WEB SECURITY TESTING WORKFLOW               ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "[1/4] Initial reconnaissance and header analysis..."
-  shell node tools/security/scanner.mjs ${url} --checks headers --verbose
-  shell echo ""
-  shell echo "[2/4] Vulnerability scanning (SQLi, XSS, CMDI, XXE, SSRF)..."
-  shell node tools/security/scanner.mjs ${url} --checks sqli,xss,cmdi,xxe,ssrf --verbose
-  shell echo ""
-  shell echo "[3/4] Targeted fuzzing of identified endpoints..."
-  shell node tools/security/fuzzer.mjs ${url} --type all --verbose
-  shell echo ""
-  shell echo "[4/4] Generating comprehensive report..."
-  shell mkdir -p /tmp/security-reports
-  shell node tools/security/scanner.mjs ${url} --json > /tmp/security-reports/scan_$(date +%Y%m%d_%H%M%S).json
-  shell node tools/security/fuzzer.mjs ${url} --type all --json > /tmp/security-reports/fuzz_$(date +%Y%m%d_%H%M%S).json
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         WEB SECURITY TESTING COMPLETE                     ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Reports saved to: /tmp/security-reports/"
-  shell echo "Review findings and use binary exploitation tools for discovered binaries"
-end
-
-# ============================================================================
-# Smart Kernel Analysis Workflow
-# Combines: IOCTL detection, complexity analysis, parse function detection
-# ============================================================================
-
-task smart-analyze-kernel
-  describe Comprehensive kernel binary analysis using automagic detection
-  describe Usage: pf smart-analyze-kernel binary=/path/to/kernel/module
-  shell test -n "${binary}" || (echo "Error: binary parameter required" && exit 1)
-  shell echo "Target: ${binary}"
-  shell echo ""
-  shell echo "=== Phase 1: Security Analysis ==="
-  shell python3 tools/exploit/checksec_batch.py ${binary} --json > /tmp/checksec-${$}.json || echo "Checksec failed"
-  shell echo ""
-  shell echo "=== Phase 2: ROP Gadget Discovery ==="
-  shell pf rop-gadgets binary=${binary} 2>&1 | head -50 || echo "ROP gadget search not available"
-  shell echo ""
-  shell echo "=== Phase 3: Exploit Strategy Recommendation ==="
-  shell python3 -c "
-import json, sys, os
-try:
-    with open('/tmp/checksec-${$}.json') as f:
-        data = json.load(f)
-    print('Based on security features:')
-    # Check for NX
-    if 'NX' in str(data) or 'nx' in str(data).lower():
-        print('  ✓ NX enabled → Use ROP-based exploitation')
-        print('  Next: pf rop-chain-build binary=${binary}')
-    else:
-        print('  ✗ NX disabled → Shellcode injection possible')
-        print('  Next: pf pwn-shellcode arch=amd64')
-    # Check for PIE
-    if 'PIE' in str(data) or 'pie' in str(data).lower():
-        print('  ✓ PIE enabled → Need information leak')
-        print('  Consider: format string vulnerability for leak')
-    # Check for RELRO
-    if 'RELRO' in str(data):
-        print('  ✓ RELRO enabled → GOT overwrite limited')
-except:
-    print('Could not parse checksec output')
-    print('Recommended approach:')
-    print('  1. Use pf debug binary=${binary} to analyze')
-    print('  2. Use pf rop-gadgets binary=${binary} for ROP chains')
-    print('  3. Generate exploit template with pf pwn-template')
-" || echo "Analysis script failed"
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         EXPLOIT DEVELOPMENT READY                         ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-end
-
-# ============================================================================
-# Smart Security Testing Workflow (Web + Binary)
-# ============================================================================
-
-task smart-security-test
-  describe Comprehensive security testing: web scan + binary analysis + fuzzing
-  describe Intelligently tests web apps and their backend binaries
-  shell_lang bash
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART SECURITY TESTING WORKFLOW                   ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell if [ -n "${url}" ]; then
-  shell   echo "=== Phase 1: Web Application Security Scan ==="
-  shell   pf security-scan url=${url} || echo "Web security scan failed"
-  shell   echo ""
-  shell   echo "=== Phase 2: API Fuzzing ==="
-  shell   pf security-fuzz url=${url} type=all || echo "Fuzzing failed"
-  shell fi
-  shell echo ""
-  shell if [ -n "${binary}" ]; then
-  shell   echo "=== Phase 3: Binary Security Analysis ==="
-  shell   pf smart-binary-analysis binary=${binary} || echo "Binary analysis failed"
-  shell   echo ""
-  shell   echo "=== Phase 4: Binary Fuzzing ==="
-  shell   echo "Consider using pf fuzz-* tasks for binary fuzzing"
-  shell fi
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SECURITY TESTING COMPLETE                         ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-end
-
-# ============================================================================
-# Smart Kernel Debugging Workflow
-# ============================================================================
-
-task smart-kernel-analysis
-  describe Intelligent kernel module/driver analysis: lift → parse-detect → complexity → fuzz
-  describe Automatically analyzes kernel binaries for vulnerabilities
-  shell_lang bash
-  shell test -n "${binary}" || (echo "Error: binary parameter required. Usage: pf smart-kernel-analysis binary=/path/to/binary" && exit 1)
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART KERNEL ANALYSIS WORKFLOW                    ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "[1/4] Running automagic comprehensive analysis..."
-  shell python3 pf-runner/pf_main.py run kernel-automagic-analysis binary=${binary} 2>/dev/null || echo "⚠ Automagic analysis unavailable"
-  shell echo ""
-  shell echo "[2/4] IOCTL handler detection..."
-  shell python3 pf-runner/pf_main.py run kernel-ioctl-analyze-binary binary=${binary} 2>/dev/null || echo "⚠ IOCTL analysis unavailable"
-  shell echo ""
-  shell echo "[3/4] Identifying dangerous function calls..."
-  shell python3 pf-runner/pf_main.py run kernel-analyze-r2-dangerous binary=${binary} 2>/dev/null || echo "⚠ Radare2 analysis unavailable (install radare2)"
-  shell echo ""
-  shell echo "[4/4] Setting up targeted fuzzing campaign..."
-  shell echo "⚠ Use: pf kernel-fuzz-in-memory binary=${binary} function=<detected_function>"
-  shell echo "Target: ${binary}"
-  shell echo ""
-  shell echo "=== Phase 1: Binary Lifting ==="
-  shell pf lift-binary-retdec binary=${binary} 2>&1 | tail -20 || echo "Lifting failed, continuing..."
-  shell echo ""
-  shell echo "=== Phase 2: Automagic Vulnerability Analysis ==="
-  shell pf kernel-automagic-analysis binary=${binary} 2>&1 | head -100 || echo "Kernel analysis not available"
-  shell echo ""
-  shell echo "=== Phase 3: Parse Function Detection ==="
-  shell pf kernel-parse-detect binary=${binary} 2>&1 | head -50 || echo "Parse detection not available"
-  shell echo ""
-  shell echo "=== Phase 4: Complexity Analysis ==="
-  shell pf kernel-complexity-analyze binary=${binary} 2>&1 | head -50 || echo "Complexity analysis not available"
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         KERNEL ANALYSIS COMPLETE                          ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Next steps:"
-  shell echo "  - Review detected parse functions and IOCTL handlers"
-  shell echo "  - Run: pf kernel-fuzz-in-memory binary=${binary} function=<target>"
-  shell echo "  - Use: pf kernel-swarm-fuzz for large-scale fuzzing"
-end
-
-# ============================================================================
-# Smart Complete Security Assessment
-# The "just works" workflow - analyzes everything intelligently
-# ============================================================================
-
-task smart-security-assessment
-  describe Complete security assessment combining binary, web, and kernel analysis
-  describe Usage: pf smart-security-assessment [binary=path] [url=http://target] [kernel=path]
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART COMPLETE SECURITY ASSESSMENT                ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell mkdir -p /tmp/smart-security-assessment
-  shell echo "Assessment started at $(date)" > /tmp/smart-security-assessment/assessment.log
-  shell echo ""
-  shell if [ -n "${binary}" ]; then \
-    echo "═══ Binary Analysis ═══" && \
-    python3 pf-runner/pf_main.py run smart-analyze-binary binary=${binary}; \
-  fi
-  shell echo ""
-  shell if [ -n "${url}" ]; then \
-    echo "═══ Web Security Testing ═══" && \
-    python3 pf-runner/pf_main.py run smart-test-web-security url=${url}; \
-  fi
-  shell echo ""
-  shell if [ -n "${kernel}" ]; then \
-    echo "═══ Kernel Analysis ═══" && \
-    python3 pf-runner/pf_main.py run smart-analyze-kernel binary=${kernel}; \
-  fi
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         COMPLETE ASSESSMENT FINISHED                      ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Results saved to: /tmp/smart-security-assessment/"
-  shell echo "For targeted analysis, use:"
-  shell echo "  - pf smart-analyze-binary binary=/path/to/binary"
-  shell echo "  - pf smart-test-web-security url=http://target"
-  shell echo "  - pf smart-analyze-kernel binary=/path/to/module"
-end
-
-# ============================================================================
-# Help and Documentation
-  shell echo "Next steps for discovered vulnerabilities:"
-  shell echo "  pf kernel-fuzz-in-memory binary=${binary} function=<detected_func>"
-end
-
-# ============================================================================
-# Smart Container + Package Workflow
-# ============================================================================
-
-task smart-package-install
-  describe Intelligent package installation: auto-detect format → convert → install
-  describe Automatically handles package format conversion and installation
-  shell_lang bash
-  shell test -n "${package}" || (echo "Error: package parameter required. Usage: pf smart-package-install package=/path/to/package" && exit 1)
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART PACKAGE INSTALLATION WORKFLOW               ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Package: ${package}"
-  shell echo ""
-  shell echo "=== Phase 1: Package Format Detection ==="
-  shell PKG_EXT="${package##*.}"
-  shell echo "Detected format: $PKG_EXT"
-  shell echo ""
-  shell echo "=== Phase 2: System Package Manager Detection ==="
-  shell if command -v apt-get >/dev/null 2>&1; then
-  shell   echo "System: Debian/Ubuntu (apt)"
-  shell   TARGET_FORMAT="deb"
-  shell elif command -v dnf >/dev/null 2>&1; then
-  shell   echo "System: Fedora/RHEL (dnf)"
-  shell   TARGET_FORMAT="rpm"
-  shell elif command -v pacman >/dev/null 2>&1; then
-  shell   echo "System: Arch (pacman)"
-  shell   TARGET_FORMAT="pacman"
-  shell else
-  shell   echo "Unknown package manager, using container-based install"
-  shell   TARGET_FORMAT="container"
-  shell fi
-  shell echo ""
-  shell echo "=== Phase 3: Package Conversion (if needed) ==="
-  shell if [ "$PKG_EXT" != "$TARGET_FORMAT" ] && [ "$TARGET_FORMAT" != "container" ]; then
-  shell   echo "Converting $PKG_EXT to $TARGET_FORMAT..."
-  shell   pf pkg-convert source=${package} target=$TARGET_FORMAT || echo "Conversion failed, trying direct install"
-  shell else
-  shell   echo "No conversion needed"
-  shell fi
-  shell echo ""
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         PACKAGE READY FOR INSTALLATION                    ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-end
-
-# ============================================================================
-# Smart Web Development Workflow
-# ============================================================================
-
-task smart-web-dev
-  describe Intelligent web development: build → test → security-check → serve
-  describe Complete development workflow with automatic building and testing
-  shell_lang bash
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART WEB DEVELOPMENT WORKFLOW                    ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "=== Phase 1: Auto-Build Detection ==="
-  shell pf build_detect || echo "Build detection not available"
-  shell echo ""
-  shell echo "=== Phase 2: Build All WASM Modules ==="
-  shell pf web-build-all 2>&1 | tail -20 || echo "WASM build failed"
-  shell echo ""
-  shell echo "=== Phase 3: Run Tests ==="
-  shell npm run test:unit 2>&1 | tail -30 || echo "Tests not available or failed"
-  shell echo ""
-  shell echo "=== Phase 4: Quick Security Check ==="
-  shell echo "Checking for common security issues..."
-  shell grep -r "eval(" demos/ 2>/dev/null && echo "⚠ Warning: eval() usage found" || echo "✓ No eval() usage"
-  shell grep -r "innerHTML" demos/ 2>/dev/null && echo "⚠ Warning: innerHTML usage found (XSS risk)" || echo "✓ No innerHTML usage"
-  shell echo ""
-  shell echo "=== Phase 5: Starting Development Server ==="
-  shell echo "Server will start on http://localhost:${port:-8080}"
-  shell pf web-dev port=${port:-8080} || echo "Server failed to start"
-end
-
-# ============================================================================
-# Workflow Help
-# ============================================================================
-
-task smart-workflows-help
-  describe Show help for all smart integrated workflows
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART WORKFLOWS - INTEGRATED TOOL CHAINS          ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "These workflows combine multiple tools intelligently to 'just work'."
-  shell echo ""
-  shell echo "BINARY EXPLOITATION:"
-  shell echo "  pf smart-analyze-binary binary=/path/to/binary"
-  shell echo "    → Combines: checksec + ROP analysis + pwntools + exploit generation"
-  shell echo ""
-  shell echo "  pf smart-exploit-binary binary=/path/to/binary"
-  shell echo "    → Automated exploit development with ROP chains"
-  shell echo ""
-  shell echo "  pf smart-fuzz-binary binary=/path/to/binary [duration=60]"
-  shell echo "    → Intelligent fuzzing with crash analysis"
-  shell echo ""
-  shell echo "WEB SECURITY:"
-  shell echo "  pf smart-test-web-security url=http://target:port"
-  shell echo "    → Combines: scanner + fuzzer + vulnerability analysis"
-  shell echo ""
-  shell echo "KERNEL ANALYSIS:"
-  shell echo "  pf smart-analyze-kernel binary=/path/to/kernel/module"
-  shell echo "    → Automagic: parse detection + complexity + IOCTL + fuzzing"
-  shell echo ""
-  shell echo "COMPLETE ASSESSMENT:"
-  shell echo "  pf smart-security-assessment [binary=path] [url=http://target] [kernel=path]"
-  shell echo "    → Full security assessment across all domains"
-  shell echo ""
-  shell echo "EXAMPLES:"
-  shell echo "  # Analyze a vulnerable binary"
-  shell echo "  pf smart-analyze-binary binary=./vulnerable_app"
-  shell echo ""
-  shell echo "  # Test web application security"
-  shell echo "  pf smart-test-web-security url=http://localhost:8080"
-  shell echo ""
-  shell echo "  # Complete assessment of a system"
-  shell echo "  pf smart-security-assessment binary=./app url=http://localhost kernel=./module.ko"
-  shell echo ""
-  shell echo "For individual tools, see:"
-  shell echo "  pf exploit-help      - Exploit development tools"
-  shell echo "  pf security-help     - Security testing tools"
-  shell echo "  pf kernel-debug-help - Kernel debugging tools"
-  shell_lang bash
-  shell echo "╔═══════════════════════════════════════════════════════════╗"
-  shell echo "║         SMART INTEGRATED WORKFLOWS                        ║"
-  shell echo "╚═══════════════════════════════════════════════════════════╝"
-  shell echo ""
-  shell echo "Available Smart Workflows:"
-  shell echo ""
-  shell echo "1. smart-binary-analysis binary=<path>"
-  shell echo "   → Comprehensive binary analysis (checksec + lift + analyze)"
-  shell echo ""
-  shell echo "2. smart-exploit-dev binary=<path>"
-  shell echo "   → Intelligent exploit development (checksec + ROP + strategy)"
-  shell echo ""
-  shell echo "3. smart-security-test url=<url> binary=<path>"
-  shell echo "   → Complete security testing (web + binary + fuzzing)"
-  shell echo ""
-  shell echo "4. smart-kernel-analysis binary=<path>"
-  shell echo "   → Kernel module analysis (lift + parse-detect + complexity)"
-  shell echo ""
-  shell echo "5. smart-package-install package=<path>"
-  shell echo "   → Auto-format detection and conversion"
-  shell echo ""
-  shell echo "6. smart-web-dev [port=8080]"
-  shell echo "   → Complete web dev workflow (build + test + security + serve)"
-  shell echo ""
-  shell echo "These workflows combine multiple tools intelligently to"
-  shell echo "accomplish complex tasks with a single command."
+  shell echo "Try these smart workflows:"
+  shell echo "  pf smart-analyze target=<your_binary>"
+  shell echo "  pf smart-exploit binary=<your_binary>"
+  shell echo "  pf smart-fuzz target=<your_target>"
 end
