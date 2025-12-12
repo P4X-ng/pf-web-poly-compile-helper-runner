@@ -1,10 +1,6 @@
 # pf web plugin (minimal)
 
-<<<<<<< HEAD
-# Include smart integrated workflows - Round 1 of tightening integration
-=======
-# Include smart integrated workflows (NEW - combines tools intelligently)
->>>>>>> main
+# Include smart workflows for intelligent tool integration
 include Pfyfile.smart-workflows.pf
 
 # Include binary lifting tasks
@@ -70,6 +66,12 @@ include Pfyfile.web.pf
 
 # Include REST API management tasks
 include Pfyfile.rest-api.pf
+
+# Include smart workflows and intelligent tool integration
+include Pfyfile.smart-workflows.pf
+
+# Include enhanced tool integration (smart combinations)
+include Pfyfile.enhanced-integration.pf
 
 task web-dev
   describe Start development server with REST API support
