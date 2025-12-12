@@ -19,6 +19,14 @@ SANITIZER_FLAGS="{sanitizer_flags} -fno-omit-frame-pointer -g"
 
 # The sanitizer flags are needed for both compilation and linking
 exec clang $SANITIZER_FLAGS "$@"
+# Determine if we're compiling or linking
+if [[ "$*" == *"-c"* ]]; then
+    # Compilation only - add sanitizer flags to CFLAGS
+    exec clang $SANITIZER_FLAGS "$@"
+else
+    # Linking - add sanitizer flags to both compile and link
+    exec clang $SANITIZER_FLAGS "$@"
+fi
 '''
     
     wrapper_path = Path.home() / ".local" / "bin" / name
@@ -43,6 +51,14 @@ SANITIZER_FLAGS="{sanitizer_flags} -fno-omit-frame-pointer -g"
 
 # The sanitizer flags are needed for both compilation and linking
 exec clang++ $SANITIZER_FLAGS "$@"
+# Determine if we're compiling or linking
+if [[ "$*" == *"-c"* ]]; then
+    # Compilation only - add sanitizer flags to CXXFLAGS
+    exec clang++ $SANITIZER_FLAGS "$@"
+else
+    # Linking - add sanitizer flags to both compile and link
+    exec clang++ $SANITIZER_FLAGS "$@"
+fi
 '''
     
     wrapper_path = Path.home() / ".local" / "bin" / cxx_name
@@ -78,6 +94,53 @@ def main():
             f"-fsanitize={flag_name}",
             description
         )
+    # AddressSanitizer
+    create_wrapper_script(
+        "clang-asan",
+        "-fsanitize=address",
+        "AddressSanitizer wrapper - detects memory errors"
+    )
+    create_cxx_wrapper(
+        "clang-asan",
+        "-fsanitize=address",
+        "AddressSanitizer wrapper - detects memory errors"
+    )
+    
+    # MemorySanitizer
+    create_wrapper_script(
+        "clang-msan",
+        "-fsanitize=memory",
+        "MemorySanitizer wrapper - detects uninitialized memory"
+    )
+    create_cxx_wrapper(
+        "clang-msan",
+        "-fsanitize=memory",
+        "MemorySanitizer wrapper - detects uninitialized memory"
+    )
+    
+    # UndefinedBehaviorSanitizer
+    create_wrapper_script(
+        "clang-ubsan",
+        "-fsanitize=undefined",
+        "UndefinedBehaviorSanitizer wrapper - detects undefined behavior"
+    )
+    create_cxx_wrapper(
+        "clang-ubsan",
+        "-fsanitize=undefined",
+        "UndefinedBehaviorSanitizer wrapper - detects undefined behavior"
+    )
+    
+    # ThreadSanitizer
+    create_wrapper_script(
+        "clang-tsan",
+        "-fsanitize=thread",
+        "ThreadSanitizer wrapper - detects data races"
+    )
+    create_cxx_wrapper(
+        "clang-tsan",
+        "-fsanitize=thread",
+        "ThreadSanitizer wrapper - detects data races"
+    )
     
     # Combined sanitizers (ASan + UBSan)
     create_wrapper_script(
