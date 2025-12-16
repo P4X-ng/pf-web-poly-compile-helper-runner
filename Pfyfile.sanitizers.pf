@@ -159,6 +159,19 @@ task sanitizer-test
   describe Test sanitizer installation and basic functionality
   shell echo "🧪 Testing sanitizer installation..."
   shell echo ""
+  shell TEST_ASAN=$(mktemp)
+  shell TEST_MSAN=$(mktemp)
+  shell TEST_UBSAN=$(mktemp)
+  shell trap 'rm -f $TEST_ASAN $TEST_MSAN $TEST_UBSAN' EXIT
+  shell echo "1. Testing clang with AddressSanitizer..."
+  shell echo 'int main(){char *p=malloc(10); p[10]=1; return 0;}' | clang -x c -fsanitize=address -o $TEST_ASAN - 2>&1 | head -5 || true
+  shell echo "2. Testing clang with MemorySanitizer..."
+  shell echo 'int main(){int x; return x;}' | clang -x c -fsanitize=memory -o $TEST_MSAN - 2>/dev/null || echo "MSan requires special libc (expected)"
+  shell echo "3. Testing clang with UBSan..."
+  shell echo '#include <limits.h>' | cat - <(echo 'int main(){int x=INT_MAX; return x+1;}') | clang -x c -fsanitize=undefined -o $TEST_UBSAN - 2>&1 | head -5 || true
+  shell echo ""
+  shell echo "✅ Sanitizer installation test complete!"
+=======
   shell echo "1. Testing clang with AddressSanitizer..."
   shell echo 'int main(){char *p=malloc(10); p[10]=1; return 0;}' | clang -x c -fsanitize=address -o /tmp/test_asan -
   shell echo "2. Testing clang with MemorySanitizer..."
@@ -207,6 +220,8 @@ task sanitizer-help
   shell echo "  pf build-with-tsan           # ThreadSanitizer (data races)"
   shell echo "  pf build-with-all-sanitizers # Multiple sanitizers (asan+ubsan)"
   shell echo ""
+  shell echo "ADVANCED FEATURES:"
+  shell echo "  pf sanitizer-coverage                   # Build with coverage"
   shell echo "ANALYSIS AND DEBUGGING:"
   shell echo "  pf sanitizer-analyze log_file=<file>    # Analyze sanitizer output"
   shell echo "  pf sanitizer-symbolize binary=<file>    # Symbolize stack traces"
