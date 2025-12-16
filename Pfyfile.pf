@@ -18,6 +18,9 @@ include Pfyfile.practice.pf
 # Include security testing tasks
 include Pfyfile.security.pf
 
+# Include unified security assessment framework
+include Pfyfile.unified-security.pf
+
 # Include fuzzing and sanitizer tasks
 include Pfyfile.fuzzing.pf
 
