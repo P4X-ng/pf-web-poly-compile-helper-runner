@@ -520,7 +520,8 @@ def _canonical_lang(lang_hint: str) -> str:
 _LANG_BRACKET_RE = re.compile(r"^\s*\[lang:([^\]]+)\]\s*(.*)$", re.IGNORECASE | re.DOTALL)
 
 # Regex to parse heredoc syntax: << DELIMITER [> output_file]
-_HEREDOC_RE = re.compile(r"<<\s*([A-Z][A-Z0-9_]*)\s*(?:>\s*([^\s]+))?$")
+# Allow uppercase or mixed case delimiters (following bash convention)
+_HEREDOC_RE = re.compile(r"<<\s*([A-Za-z][A-Za-z0-9_]*)\s*(?:>\s*([^\s]+))?$")
 
 
 def _parse_heredoc_syntax(cmd: str) -> Tuple[Optional[str], Optional[str]]:
@@ -886,16 +887,16 @@ def parse_pfyfile_text(
         # Handle heredoc collection - check if we're collecting heredoc lines
         if heredoc_state is not None:
             cmd_prefix, delimiter, output_file, collected_lines = heredoc_state
-            # Check if this line is the closing delimiter
+            # Check if this line is the closing delimiter (compare stripped version)
             if line == delimiter:
                 # End of heredoc - construct the full command
                 heredoc_content = "\n".join(collected_lines)
                 
                 # Build the command with heredoc content inline
-                # Output redirection will be appended after the polyglot code
+                # Use a unique marker for output redirection (unlikely to appear in user code)
                 if output_file:
-                    # Store the output file as a suffix to be applied after polyglot rendering
-                    full_cmd = f"{cmd_prefix} {heredoc_content} __HEREDOC_REDIRECT__{output_file}"
+                    # Marker will be detected and handled at execution time
+                    full_cmd = f"{cmd_prefix} {heredoc_content} \x00__PF_HEREDOC_OUTPUT__\x00{output_file}"
                 else:
                     # No output redirection, just run the polyglot code
                     full_cmd = f"{cmd_prefix} {heredoc_content}"
@@ -905,8 +906,10 @@ def parse_pfyfile_text(
                 heredoc_state = None
                 continue
             else:
-                # Still collecting heredoc lines
-                collected_lines.append(line)
+                # Still collecting heredoc lines - preserve original formatting
+                # Strip only leading whitespace that's common to all task lines (task indentation)
+                # Keep the code's relative indentation intact
+                collected_lines.append(raw.rstrip())
                 continue
 
         # Handle backslash line continuation inside task bodies
@@ -973,8 +976,13 @@ def parse_pfyfile_text(
             cmd_prefix = line[:heredoc_start].strip()
             
             # Only process as polyglot heredoc if there's a [lang:xxx] marker
-            if "[lang:" in cmd_prefix.lower():
-                # Start collecting heredoc content
+            # Remove the 'shell' verb if present to check for language marker
+            check_cmd = cmd_prefix
+            if check_cmd.startswith("shell "):
+                check_cmd = check_cmd[6:]  # Remove "shell "
+            lang_detected, _ = _parse_lang_bracket(check_cmd)
+            if lang_detected is not None:
+                # This is a polyglot heredoc - start collecting content
                 heredoc_state = (cmd_prefix, delimiter, output_file, [])
                 continue
 
@@ -1174,10 +1182,11 @@ def _exec_line_fabric(
         lang, remaining_cmd = _parse_lang_bracket(rest_of_line)
         if lang is not None:
             # This is a polyglot command - render it
-            # First check if there's a heredoc redirect marker
+            # First check if there's a heredoc redirect marker (null bytes make it unique)
             output_redirect = None
-            if "__HEREDOC_REDIRECT__" in remaining_cmd:
-                parts = remaining_cmd.split("__HEREDOC_REDIRECT__", 1)
+            marker = "\x00__PF_HEREDOC_OUTPUT__\x00"
+            if marker in remaining_cmd:
+                parts = remaining_cmd.split(marker, 1)
                 remaining_cmd = parts[0]
                 output_redirect = parts[1].strip()
             
