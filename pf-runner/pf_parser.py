@@ -14,16 +14,16 @@ This module is the heart of the pf task runner, providing:
 - Flexible parameters: --key=value, -k val, and key=value are equivalent
 
 File Structure (1939 lines, organized into sections):
-  - CONFIG (lines 58-73): Environment and configuration
-  - Pfyfile discovery (lines 75-98): Find and locate Pfyfile.pf
-  - Interpolation (lines 100-118): Variable substitution
-  - Polyglot shell helpers (lines 120-586): 40+ language support [467 lines]
-  - DSL parsing (lines 586-920): Task definition parsing
-  - Embedded sample (lines 922-929): Default task examples
-  - Hosts parsing (lines 931-964): SSH host management
-  - Executors (lines 966-1202): Fabric-based execution
-  - Built-ins (lines 1204-1230): Default tasks
-  - CLI (lines 1232+): Command-line interface
+  - CONFIG (lines 73-88): Environment and configuration
+  - Pfyfile discovery (lines 90-113): Find and locate Pfyfile.pf
+  - Interpolation (lines 115-133): Variable substitution
+  - Polyglot shell helpers (lines 135-600): 40+ language support [465 lines]
+  - DSL parsing (lines 601-937): Task definition parsing
+  - Embedded sample (lines 939-946): Default task examples
+  - Hosts parsing (lines 948-981): SSH host management
+  - Executors (lines 983-1219): Fabric-based execution
+  - Built-ins (lines 1221-1247): Default tasks
+  - CLI (lines 1249+): Command-line interface
 
 Install
   pip install "fabric>=3.2,<4"
