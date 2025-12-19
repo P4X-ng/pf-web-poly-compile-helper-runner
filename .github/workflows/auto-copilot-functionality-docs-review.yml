@@ -130,6 +130,7 @@ jobs:
           
           if [ -f "README.md" ]; then
             word_count=$(wc -w < README.md 2>/dev/null || echo 0)
+            word_count=$(echo "$word_count" | tr -d ' \t\n\r')
             word_count=${word_count:-0}
             echo "- Word count: $word_count" >> /tmp/doc-analysis.md
             
@@ -182,7 +183,10 @@ jobs:
               class_count=$(grep -c "^class " "$file" 2>/dev/null || echo 0)
               docstring_count=$(grep -c '"""' "$file" 2>/dev/null || echo 0)
               
-              # Ensure variables are numeric
+              # Ensure variables are numeric and clean
+              func_count=$(echo "$func_count" | tr -d ' \t\n\r')
+              class_count=$(echo "$class_count" | tr -d ' \t\n\r')
+              docstring_count=$(echo "$docstring_count" | tr -d ' \t\n\r')
               func_count=${func_count:-0}
               class_count=${class_count:-0}
               docstring_count=${docstring_count:-0}
@@ -208,7 +212,10 @@ jobs:
               class_count=$(grep -c "^class " "$file" 2>/dev/null || echo 0)
               jsdoc_count=$(grep -c '/\*\*' "$file" 2>/dev/null || echo 0)
               
-              # Ensure variables are numeric
+              # Ensure variables are numeric and clean
+              func_count=$(echo "$func_count" | tr -d ' \t\n\r')
+              class_count=$(echo "$class_count" | tr -d ' \t\n\r')
+              jsdoc_count=$(echo "$jsdoc_count" | tr -d ' \t\n\r')
               func_count=${func_count:-0}
               class_count=${class_count:-0}
               jsdoc_count=${jsdoc_count:-0}
@@ -226,24 +233,6 @@ jobs:
         run: |
           echo "## Documentation Review Summary" >> /tmp/doc-review-summary.md
           echo "" >> /tmp/doc-review-summary.md
-          echo "### Automated Documentation Analysis Complete" >> /tmp/doc-review-summary.md
-          echo "" >> /tmp/doc-review-summary.md
-          echo "The following areas have been analyzed:" >> /tmp/doc-review-summary.md
-          echo "1. ✅ README.md completeness and quality" >> /tmp/doc-review-summary.md
-          echo "2. ✅ Features and functionality documentation" >> /tmp/doc-review-summary.md
-          echo "3. ✅ Installation and usage instructions" >> /tmp/doc-review-summary.md
-          echo "4. ✅ Missing or outdated documentation identification" >> /tmp/doc-review-summary.md
-          echo "5. ✅ Code comments and inline documentation" >> /tmp/doc-review-summary.md
-          echo "6. ✅ API documentation verification" >> /tmp/doc-review-summary.md
-          echo "7. ✅ Contributing guidelines presence" >> /tmp/doc-review-summary.md
-          echo "" >> /tmp/doc-review-summary.md
-          echo "### Recommendations:" >> /tmp/doc-review-summary.md
-          echo "- Review the detailed analysis above for specific improvements" >> /tmp/doc-review-summary.md
-          echo "- Ensure all new features are properly documented" >> /tmp/doc-review-summary.md
-          echo "- Keep documentation up-to-date with code changes" >> /tmp/doc-review-summary.md
-          echo "" >> /tmp/doc-review-summary.md
-          cat /tmp/doc-review-summary.md
-        continue-on-error: true
           echo "### Automated Documentation Analysis Completed" >> /tmp/doc-review-summary.md
           echo "- README.md quality check: ✅ Completed" >> /tmp/doc-review-summary.md
           echo "- Documentation file presence check: ✅ Completed" >> /tmp/doc-review-summary.md
