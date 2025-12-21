@@ -88,7 +88,7 @@ const SECRET_PATTERNS = [
   },
   {
     name: 'Basic Auth in URL',
-    pattern: /https?:\/\/[^:]+:[^@]+@[^\s'"]+/gi,
+    pattern: /https?:\/\/[^:\s\n]+:[^@\s\n]+@[^\s'"]+/gi,
     severity: 'high'
   }
 ];
