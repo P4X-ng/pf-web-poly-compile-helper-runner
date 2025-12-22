@@ -1,5 +1,9 @@
 name: "Comprehensive Test Review with Playwright"
 
+# REQUIREMENTS:
+# - A GitHub Personal Access Token with Copilot access must be created and stored as a repository secret named COPILOT_TOKEN
+# - See COPILOT_TOKEN_SETUP.md for detailed setup instructions
+
 on:
   push:
     branches:
@@ -161,9 +165,10 @@ jobs:
           cat /tmp/test-analysis.md
 
       - name: GitHub Copilot Test Review
-        uses: github/copilot-cli-action@main
+        uses: austenstone/copilot-cli-action@v2
         with:
-          query: |
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          prompt: |
             Review the test suite for this repository:
             1. Verify all web-based functionality has Playwright tests (both headed and headless)
             2. Identify missing test coverage for critical functionality
@@ -175,8 +180,6 @@ jobs:
             
             For any web tests not using Playwright, recommend migration.
             Provide specific, actionable recommendations with file names.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - name: Create or Update Test Review Issue
