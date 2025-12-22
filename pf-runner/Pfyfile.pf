@@ -9,6 +9,36 @@ include ./Pfyfile.dev.pf
 include ./Pfyfile.builds.pf
 # Note: Pfyfile.web-demo.pf excluded to avoid duplicates with main Pfyfile.web.pf
 
+# Always-on tasks: General OS-level tasks that don't require project-specific files
+# These tasks should be available system-wide regardless of current directory
+
+# TUI - Interactive terminal user interface
+include ./Pfyfile.always-on-tui.pf
+
+# Smart workflows - Intelligent tool combinations
+include ./Pfyfile.always-on-smart.pf
+
+# Exploit development tools
+include ./Pfyfile.always-on-exploit.pf
+
+# Security testing and scanning
+include ./Pfyfile.always-on-security.pf
+
+# Debugging and reverse engineering
+include ./Pfyfile.always-on-debug.pf
+
+# Git repository management
+include ./Pfyfile.always-on-git.pf
+
+# System backup and snapshot management (bish-please inspired)
+include ./Pfyfile.always-on-backup.pf
+
+# Package manager translation
+include ./Pfyfile.always-on-packages.pf
+
+# OS container and distro management
+include ./Pfyfile.always-on-os.pf
+
 task default-task
   describe This is a task from the default Pfyfile.pf
   shell echo "Hello from the default Pfyfile.pf"

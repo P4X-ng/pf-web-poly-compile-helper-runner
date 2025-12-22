@@ -1,0 +1,42 @@
+# Package Manager Tools - Always Available
+# Package format translation and management
+# Category: Package Management
+
+task pkg-formats
+  describe Show available package formats
+  shell echo "📦 Supported Package Formats:"
+  shell echo "  • deb     - Debian/Ubuntu packages"
+  shell echo "  • rpm     - Red Hat/Fedora packages"
+  shell echo "  • flatpak - Universal Linux packages"
+  shell echo "  • snap    - Canonical universal packages"
+  shell echo "  • pacman  - Arch Linux packages"
+end
+
+task pkg-help
+  describe Show package management help
+  shell echo "📦 Package Manager Tools"
+  shell echo ""
+  shell echo "Available commands:"
+  shell echo "  pf pkg-formats    # Show supported package formats"
+  shell echo "  pf pkg-help       # This help"
+  shell echo ""
+  shell echo "For full package conversion capabilities, navigate to"
+  shell echo "project directory with Pfyfile.package-manager.pf"
+  shell echo ""
+  shell echo "Supported conversions:"
+  shell echo "  deb ↔ rpm ↔ flatpak ↔ snap ↔ pacman"
+  shell echo "  (All conversions use .deb as hub format)"
+end
+
+task install-alien
+  describe Install alien package converter
+  shell echo "Installing alien..."
+  shell sudo apt-get update && sudo apt-get install -y alien || echo "alien installation requires Debian/Ubuntu system"
+end
+
+task install-pkg-tools
+  describe Install package conversion tools
+  shell echo "📦 Installing package conversion tools..."
+  shell pf install-alien
+  shell echo "✅ Package tools installed"
+end
