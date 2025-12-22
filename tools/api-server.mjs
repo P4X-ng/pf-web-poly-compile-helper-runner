@@ -262,8 +262,9 @@ if (process.env.NODE_ENV === 'production' && corsOrigin === '*') {
 }
 
 // Check if credentials should be enabled
-// Only enable credentials when using specific origins (not wildcard)
-const enableCredentials = corsOrigin !== '*' && !Array.isArray(corsOrigin);
+// Enable credentials for specific origins (single or multiple), but not for wildcard
+// Multi-origin arrays are trusted origins and can use credentials
+const enableCredentials = corsOrigin !== '*';
 
 app.use(cors({
   origin: corsOrigin,

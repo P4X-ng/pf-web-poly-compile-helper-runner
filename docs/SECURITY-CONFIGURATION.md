@@ -71,8 +71,12 @@ The server automatically parses comma-separated origins and enables credentials 
 
 ### Credentials Handling
 
-- When `CORS_ORIGIN=*`: Credentials are **disabled** (security best practice)
+- When `CORS_ORIGIN=*`: Credentials are **disabled** (security best practice - cannot use credentials with wildcard)
 - When `CORS_ORIGIN` is set to specific origin(s): Credentials are **enabled**
+  - Single origin: ✅ Credentials enabled
+  - Multiple origins (array): ✅ Credentials enabled (all are trusted origins)
+
+**Note**: The `credentials` option in CORS allows the browser to include cookies, authorization headers, and TLS client certificates in cross-origin requests. This should only be enabled for trusted origins.
 
 ### Advanced CORS Configuration
 
