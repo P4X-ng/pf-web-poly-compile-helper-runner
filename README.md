@@ -1067,6 +1067,7 @@ npx playwright show-report
 
 - **🚀 QUICKSTART Guide**: See [`QUICKSTART.md`](QUICKSTART.md) - **Start here!** Comprehensive guide with examples of all features
 - **🔥 SMART WORKFLOWS Guide**: See [`docs/SMART-WORKFLOWS.md`](docs/SMART-WORKFLOWS.md) - **NEW!** Powerful tool combinations for efficient workflows
+- **⚡ ALWAYS-ON TASKS Guide**: See [`docs/ALWAYS-ON-TASKS.md`](docs/ALWAYS-ON-TASKS.md) - **NEW!** System-wide tasks available from any directory
 - **pf-runner Documentation**: See [`pf-runner/README.md`](pf-runner/README.md) for comprehensive pf runner documentation
 - **REST API Guide**: See [`docs/REST-API.md`](docs/REST-API.md) for complete API documentation and examples
 - **Fuzzing & Sanitizers Guide**: See [`docs/FUZZING.md`](docs/FUZZING.md) for fuzzing, AFL++, and sanitizer documentation
