@@ -212,9 +212,10 @@ jobs:
           cat /tmp/doc-analysis.md
 
       - name: GitHub Copilot Documentation Review
-        uses: github/copilot-cli-actions@v1
+        uses: austenstone/copilot-cli-action@v2
         with:
-          query: |
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          prompt: |
             Review the documentation for this repository:
             1. Check README.md completeness and quality
             2. Verify all features and functionality are documented
@@ -226,8 +227,6 @@ jobs:
             8. Ensure contributing guidelines are present
             
             Provide specific recommendations with file names and sections.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - name: Create Documentation Review Report
