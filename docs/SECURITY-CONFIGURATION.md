@@ -237,7 +237,7 @@ The API server now automatically applies comprehensive security headers based on
 
 ```javascript
 // Security headers are automatically applied via middleware
-import { securityHeaders, productionSecurityHeaders, developmentSecurityHeaders } 
+import { productionSecurityHeaders, developmentSecurityHeaders } 
   from './security/security-headers-middleware.mjs';
 
 // In tools/api-server.mjs

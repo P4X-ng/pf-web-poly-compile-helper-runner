@@ -242,7 +242,7 @@ function isValidOrigin(origin) {
   
   try {
     const url = new URL(origin);
-    // Only allow http, https, and localhost protocols
+    // Only allow http and https protocols
     // Reject dangerous protocols like javascript:, data:, file:
     const allowedProtocols = ['http:', 'https:'];
     if (!allowedProtocols.includes(url.protocol)) {
