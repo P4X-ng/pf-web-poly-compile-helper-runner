@@ -63,7 +63,7 @@ def test_smart_tasks_defined():
             missing_tasks.append(task)
             print(f"❌ Missing task: {task}")
     
-    print(f"\n📊 Task Summary: {len(found_tasks)}/{len(smart_tasks)} smart tasks found")
+    print(f"\n📊 Task Summary: {len(found_tasks)}/{len(smart_tasks)} enhanced tasks found")
     
     return len(missing_tasks) == 0
 
@@ -138,12 +138,12 @@ def test_aliases_work():
 
 def main():
     """Run all integration tests"""
-    print("🚀 Smart Workflow Integration Test")
+    print("🚀 Enhanced Workflow Integration Test")
     print("=" * 50)
     
     tests = [
         ("pf Command Available", test_pf_available),
-        ("Smart Tasks Defined", test_smart_tasks_defined), 
+        ("Enhanced Tasks Defined", test_smart_tasks_defined), 
         ("Orchestration Tools", test_orchestration_tools),
         ("Pfyfile Inclusions", test_pfyfiles_included),
         ("Quick Aliases", test_aliases_work)
