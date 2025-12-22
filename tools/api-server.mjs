@@ -229,28 +229,47 @@ if (process.env.NODE_ENV === 'production') {
   logger.info('Using development security headers');
 }
 
+/**
+ * Parse CORS origin configuration from environment variable
+ * @param {string} envVar - Environment variable value for CORS_ORIGIN
+ * @returns {string|Array<string>} - Single origin string, array of origins, or '*'
+ */
+function parseCorsOrigin(envVar) {
+  if (!envVar) {
+    return '*';
+  }
+  
+  // Check if multiple origins (comma-separated)
+  if (envVar.includes(',')) {
+    return envVar.split(',').map(o => o.trim());
+  }
+  
+  // Single origin
+  return envVar;
+}
+
 // CORS Configuration - Environment-specific
 // SECURITY: In production, set CORS_ORIGIN to specific allowed origins
 // Examples:
 //   - Single origin: CORS_ORIGIN=https://example.com
 //   - Multiple origins: CORS_ORIGIN=https://example.com,https://app.example.com
 //   - Development: CORS_ORIGIN=* (default)
-const corsOrigin = process.env.CORS_ORIGIN 
-  ? (process.env.CORS_ORIGIN.includes(',') 
-      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-      : process.env.CORS_ORIGIN)
-  : '*';
+const corsOrigin = parseCorsOrigin(process.env.CORS_ORIGIN);
 
 // Warn if using wildcard CORS in production
 if (process.env.NODE_ENV === 'production' && corsOrigin === '*') {
   logger.warn('WARNING: CORS is set to wildcard (*) in production. Set CORS_ORIGIN environment variable for security.');
 }
 
+// Check if credentials should be enabled
+// Only enable credentials when using specific origins (not wildcard)
+const enableCredentials = corsOrigin !== '*' && !Array.isArray(corsOrigin);
+
 app.use(cors({
   origin: corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: corsOrigin !== '*' // Only allow credentials when origin is restricted
+  credentials: enableCredentials
 }));
 
 app.use(express.json({ limit: '10mb' }));
