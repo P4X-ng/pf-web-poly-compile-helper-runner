@@ -641,9 +641,49 @@ class Task:
         self.source_file = source_file  # Track which file this task came from
         self.params: Dict[str, str] = params or {}  # Default parameter values
         self.aliases: List[str] = aliases or []  # Command aliases for this task
+        
+        # Enhanced documentation metadata
+        self.synopsis: Optional[str] = None  # Brief usage synopsis
+        self.category: Optional[str] = None  # Task category (e.g., "Security", "Build")
+        self.examples: List[str] = []  # Usage examples
+        self.prerequisites: List[str] = []  # Required tools/setup
+        self.troubleshooting: List[str] = []  # Common issues and fixes
+        self.see_also: List[str] = []  # Related tasks
+        self.use_cases: List[str] = []  # When to use this task
+        self.notes: List[str] = []  # Additional notes and warnings
+        self.tags: List[str] = []  # Searchable tags
 
     def add(self, line: str):
         self.lines.append(line)
+        
+    def add_example(self, example: str):
+        """Add a usage example."""
+        self.examples.append(example)
+        
+    def add_prerequisite(self, prereq: str):
+        """Add a prerequisite."""
+        self.prerequisites.append(prereq)
+        
+    def add_troubleshooting(self, issue: str):
+        """Add a troubleshooting tip."""
+        self.troubleshooting.append(issue)
+        
+    def add_see_also(self, task: str):
+        """Add a related task reference."""
+        self.see_also.append(task)
+        
+    def add_use_case(self, use_case: str):
+        """Add a use case description."""
+        self.use_cases.append(use_case)
+        
+    def add_note(self, note: str):
+        """Add a note or warning."""
+        self.notes.append(note)
+        
+    def add_tag(self, tag: str):
+        """Add a searchable tag."""
+        if tag not in self.tags:
+            self.tags.append(tag)
 
 
 def _read_text_file(path: str) -> str:
@@ -905,6 +945,7 @@ def parse_pfyfile_text(
 
     Supports bash-style backslash line continuation: lines ending with '\\'
     are joined with following lines until a line without trailing backeturn 1
+    """
 
     # Handle debug-off command
     if tasks[0] == "debug-off":
