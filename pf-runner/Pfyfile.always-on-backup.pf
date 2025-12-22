@@ -12,6 +12,8 @@ task backup-create
   shell echo "Backup location: $BACKUP_DIR/$BACKUP_NAME"
   shell echo ""
   shell echo "Detecting snapshot method..."
+  # Single conditional statement to auto-detect and use best snapshot method
+  # (btrfs, ZFS, or rsync fallback) - must be one line to preserve shell logic
   shell if mountpoint -q / && [ "$(stat -f -c %T /)" = "btrfs" ]; then echo "Using btrfs snapshots (fastest)"; sudo btrfs subvolume snapshot / "$BACKUP_DIR/$BACKUP_NAME"; elif command -v zfs >/dev/null 2>&1 && zfs list | grep -q "^$(df -P / | tail -1 | awk '{print $1}')"; then echo "Using ZFS snapshots (fast)"; sudo zfs snapshot "$(df -P / | tail -1 | awk '{print $1}')@$BACKUP_NAME"; else echo "Using rsync (portable)"; mkdir -p "$BACKUP_DIR/$BACKUP_NAME" && sudo rsync -axHAWXS --numeric-ids --info=progress2 / "$BACKUP_DIR/$BACKUP_NAME/" --exclude=/dev --exclude=/proc --exclude=/sys --exclude=/tmp --exclude=/run --exclude=/mnt --exclude=/media; fi
   shell echo ""
   shell echo "✅ Backup created: $BACKUP_NAME"
