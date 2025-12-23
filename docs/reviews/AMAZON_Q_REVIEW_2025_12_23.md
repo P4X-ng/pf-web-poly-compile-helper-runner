@@ -159,10 +159,12 @@ Total Vulnerabilities: 0
 1. **Grammar Caching:**
    - Cache parsed Lark grammar objects
    - Estimated improvement: 10-50ms per invocation
+   - *Note: Estimate based on typical Lark parsing overhead for grammar of this size (~3500 lines). Actual improvement depends on file system and memory conditions.*
 
 2. **Task Graph Caching:**
    - Cache task dependency graphs when Pfyfile unchanged
    - Estimated improvement: 5-20ms per invocation
+   - *Note: Estimate based on Python AST traversal time for typical Pfyfile. Improvement may vary with task graph complexity.*
 
 **Recommendation:**
 - Implement grammar caching as a low-priority enhancement
@@ -325,7 +327,7 @@ While this project is not AWS-specific, the following AWS best practices are app
 ### 5.4 Cost Optimization
 - ✅ Minimal external dependencies reduce maintenance
 - ✅ Efficient container usage
-- N/A Cloud-specific optimizations not applicable to local tool
+- N/A: Cloud-specific optimizations not applicable to local tool
 
 ### 5.5 Reliability
 - ✅ Error handling present throughout
