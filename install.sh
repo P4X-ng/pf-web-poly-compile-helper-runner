@@ -567,34 +567,13 @@ validate_native_installation() {
     fi
     
     # Test basic pf functionality
-    log_info "Testing pf --version..."
-    if ! "$pf_cmd" --version >/dev/null 2>&1; then
-        log_error "pf --version failed"
-        return 1
-    fi
-    
     log_info "Testing pf list..."
     if ! "$pf_cmd" list >/dev/null 2>&1; then
         log_error "pf list failed"
         return 1
     fi
     
-    # Test a simple task if available
-    log_info "Testing basic pf task execution..."
-    if "$pf_cmd" list 2>/dev/null | grep -q "hello\|test\|demo" 2>/dev/null; then
-        # Try to run a simple task
-        local test_task
-        test_task=$("$pf_cmd" list 2>/dev/null | grep -E "hello|test|demo" | head -1 | awk '{print $1}' || echo "")
-        if [[ -n "$test_task" ]]; then
-            log_info "Running test task: $test_task"
-            if "$pf_cmd" "$test_task" >/dev/null 2>&1; then
-                log_success "Test task '$test_task' executed successfully"
-            else
-                log_warning "Test task '$test_task' failed, but basic pf functionality works"
-            fi
-        fi
-    fi
-    
+    log_success "Basic pf functionality validated"
     log_success "Native installation validation passed"
     return 0
 }

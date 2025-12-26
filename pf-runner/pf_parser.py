@@ -85,6 +85,11 @@ ENV_MAP: Dict[str, List[str] | str] = {
     "staging": "staging@10.1.2.3:22,staging@10.1.2.4:22",
 }
 
+# Embedded default tasks when no Pfyfile is found
+PFY_EMBED = """
+# Default embedded tasks - shown when no Pfyfile is found
+"""
+
 # Import HELP_VARIATIONS from pf_args to avoid duplication
 try:
     from pf_args import HELP_VARIATIONS
@@ -942,6 +947,163 @@ def _process_line_continuation(lines: List[str], start_idx: int) -> Tuple[str, i
     # Join all parts with single space, preserving the structure
     combined_line = " ".join(combined_parts) if combined_parts else ""
     return combined_line, current_idx
+
+
+# Built-in tasks
+BUILTINS: Dict[str, List[str]] = {}
+
+
+def _normalize_hosts(hosts_list: List[str]) -> List[str]:
+    """Normalize a list of host specifications."""
+    normalized = []
+    for h in hosts_list:
+        if h and h not in normalized:
+            normalized.append(h)
+    return normalized
+
+
+def _merge_env_hosts(env_names: List[str]) -> List[str]:
+    """Merge hosts from environment variables."""
+    hosts = []
+    for env_name in env_names:
+        if env_name in ENV_MAP:
+            env_hosts = ENV_MAP[env_name]
+            if isinstance(env_hosts, list):
+                hosts.extend(env_hosts)
+            elif isinstance(env_hosts, str):
+                hosts.append(env_hosts)
+    return hosts
+
+
+def _dedupe_preserve_order(items: List[str]) -> List[str]:
+    """Remove duplicates while preserving order."""
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+
+def _parse_host(
+    host_spec: str,
+    default_user: Optional[str] = None,
+    default_port: Optional[int] = None
+) -> Dict[str, any]:
+    """Parse a host specification into components."""
+    # Handle @local
+    if host_spec == "@local":
+        return {"host": "localhost", "user": None, "port": None, "local": True}
+    
+    # Parse user@host:port format
+    user = default_user
+    host = host_spec
+    port = default_port
+    
+    if "@" in host_spec:
+        user, host = host_spec.split("@", 1)
+    
+    if ":" in host:
+        host, port_str = host.rsplit(":", 1)
+        try:
+            port = int(port_str)
+        except ValueError:
+            pass
+    
+    return {
+        "host": host,
+        "user": user,
+        "port": port,
+        "local": False
+    }
+
+
+def _c_for(
+    host_spec: Dict[str, any],
+    sudo: bool = False,
+    sudo_user: Optional[str] = None
+) -> Tuple[Optional[Connection], Dict[str, any]]:
+    """Create a Fabric connection for a host specification."""
+    if host_spec.get("local"):
+        return None, host_spec
+    
+    connect_kwargs = {}
+    if host_spec.get("port"):
+        connect_kwargs["port"] = host_spec["port"]
+    
+    conn = Connection(
+        host=host_spec["host"],
+        user=host_spec.get("user"),
+        connect_kwargs=connect_kwargs
+    )
+    
+    return conn, host_spec
+
+
+def _exec_line_fabric(
+    ln: str,
+    connection: Optional[Connection],
+    env_vars: Dict[str, str],
+    task_name: str,
+    sudo: bool = False,
+    sudo_user: Optional[str] = None
+) -> int:
+    """Execute a line using Fabric."""
+    if connection is None:
+        # Local execution
+        import subprocess
+        try:
+            result = subprocess.run(
+                ln,
+                shell=True,
+                env={**os.environ, **env_vars},
+                capture_output=False
+            )
+            return result.returncode
+        except Exception as e:
+            print(f"Error executing command: {e}", file=sys.stderr)
+            return 1
+    else:
+        # Remote execution via Fabric
+        try:
+            kwargs = {"env": env_vars}
+            if sudo:
+                kwargs["user"] = sudo_user
+                result = connection.sudo(ln, **kwargs)
+            else:
+                result = connection.run(ln, **kwargs)
+            return 0 if result.ok else result.return_code
+        except Exception as e:
+            print(f"Error executing remote command: {e}", file=sys.stderr)
+            return 1
+
+
+def list_dsl_tasks_with_desc(file_arg: Optional[str] = None) -> List[Tuple[str, Optional[str]]]:
+    """List all tasks with their descriptions."""
+    try:
+        dsl_src, task_sources = _load_pfy_source_with_includes(file_arg=file_arg)
+        dsl_tasks = parse_pfyfile_text(dsl_src, task_sources)
+        result = []
+        for name, task in sorted(dsl_tasks.items()):
+            result.append((name, task.description))
+        return result
+    except Exception:
+        return []
+
+
+def get_alias_map(file_arg: Optional[str] = None) -> Dict[str, str]:
+    """Get mapping of aliases to task names."""
+    try:
+        dsl_src, task_sources = _load_pfy_source_with_includes(file_arg=file_arg)
+        dsl_tasks = parse_pfyfile_text(dsl_src, task_sources)
+        alias_map = {}
+        for name, task in dsl_tasks.items():
+            for alias in task.aliases:
+                alias_map[alias] = name
+        return alias_map
+    except Exception:
+        return {}
 
 
 def parse_pfyfile_text(
