@@ -360,9 +360,9 @@ setup_python_env() {
     log_info "Upgrading pip..."
     $PIP_CMD install --upgrade pip
     
-    # Install Python dependencies
+    # Install Python dependencies (fabric is bundled locally)
     log_info "Installing Python dependencies..."
-    $PIP_CMD install "fabric>=3.2,<4" "lark>=1.1.0"
+    $PIP_CMD install "lark>=1.1.0"
     
     log_success "Python environment setup complete"
 }
