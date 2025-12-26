@@ -944,101 +944,10 @@ def parse_pfyfile_text(
     """Parse Pfyfile text into Task objects with optional source tracking.
 
     Supports bash-style backslash line continuation: lines ending with '\\'
-    are joined with following lines until a line without trailing backslash.
-    
-    Args:
-        text: The Pfyfile content to parse
-        task_sources: Optional mapping of task names to source files
-    
-    Returns:
-        Dictionary mapping task names to Task objects
+    are joined with following lines until a line without trailing backeturn 1
     """
-    tasks_dict: Dict[str, Task] = {}
-    current_task: Optional[Task] = None
-    lines = text.splitlines()
-    i = 0
-    
-    while i < len(lines):
-        line = lines[i]
-        stripped = line.strip()
-        
-        # Handle line continuation
-        if stripped.endswith('\\'):
-            combined_line, new_i = _process_line_continuation(lines, i)
-            stripped = combined_line.strip()
-            i = new_i
-        
-        # Skip empty lines and comments
-        if not stripped or stripped.startswith('#'):
-            i += 1
-            continue
-        
-        # Parse task definition
-        if stripped.startswith('task '):
-            try:
-                task_name, params, aliases = _parse_task_definition(stripped)
-                # Get source file if available
-                source_file = task_sources.get(task_name) if task_sources else None
-                current_task = Task(task_name, source_file, params, aliases)
-                tasks_dict[task_name] = current_task
-            except (ValueError, PFSyntaxError):
-                # Skip malformed task definitions
-                pass
-            i += 1
-            continue
-        
-        # End of task
-        if stripped == 'end':
-            current_task = None
-            i += 1
-            continue
-        
-        # Task body lines
-        if current_task is not None:
-            if stripped.startswith('describe '):
-                current_task.description = stripped[9:].strip()
-            elif stripped.startswith('synopsis '):
-                current_task.synopsis = stripped[9:].strip()
-            elif stripped.startswith('category '):
-                current_task.category = stripped[9:].strip()
-            elif stripped.startswith('example '):
-                current_task.add_example(stripped[8:].strip())
-            elif stripped.startswith('prerequisite '):
-                current_task.add_prerequisite(stripped[13:].strip())
-            elif stripped.startswith('troubleshooting '):
-                current_task.add_troubleshooting(stripped[16:].strip())
-            elif stripped.startswith('see-also '):
-                current_task.add_see_also(stripped[9:].strip())
-            elif stripped.startswith('use-case '):
-                current_task.add_use_case(stripped[9:].strip())
-            elif stripped.startswith('note '):
-                current_task.add_note(stripped[5:].strip())
-            elif stripped.startswith('tag '):
-                current_task.add_tag(stripped[4:].strip())
-            else:
-                current_task.add(line)
-        
-        i += 1
-    
-    return tasks_dict
 
-
-def main(argv: List[str]) -> int:
-    """Main entry point for pf command-line interface.
-    
-    Args:
-        argv: Command-line arguments (excluding program name)
-    
-    Returns:
-        Exit code (0 for success, non-zero for failure)
-    """
     # Handle debug-off command
-    tasks = argv
-    if not tasks:
-        tasks = ["list"]
-    
-    pfy_file_arg = None
-    
     if tasks[0] == "debug-off":
         try:
             from pf_prune import set_debug_mode
