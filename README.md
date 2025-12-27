@@ -525,13 +525,51 @@ The container image already bundles the pf runtime; language toolchains are inst
 
 ## Installation
 
-### Recommended: Container-First Install
+### One-Command Installation (Recommended)
+
+The absolute simplest way to install:
+
+```bash
+# Clone and install in one go
+git clone https://github.com/P4X-ng/pf-web-poly-compile-helper-runner.git
+cd pf-web-poly-compile-helper-runner
+./quick-install.sh
+```
+
+Or use curl (if the script is hosted):
+```bash
+curl -sSL https://raw.githubusercontent.com/P4X-ng/pf-web-poly-compile-helper-runner/main/quick-install.sh | bash
+```
+
+The quick installer automatically:
+- Detects your OS and available tools (podman, docker, or native)
+- Uses `.deb` package on Debian/Ubuntu if available
+- Installs to the appropriate location (system-wide or user)
+- Sets everything up with minimal user interaction
+
+### Debian/Ubuntu Package Installation
+
+For Debian-based systems, you can build and install a `.deb` package:
+
+```bash
+# Build the package
+cd debian
+./build-deb.sh
+
+# Install it
+sudo dpkg -i build/pf-runner_1.0.0.deb
+sudo apt-get install -f  # Fix any dependency issues
+```
+
+This installs pf-runner system-wide to `/usr/local`.
+
+### Container-First Install (Manual)
 
 The simplest way to get started (builds images and installs the wrapper):
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/P4X-ng/pf-web-poly-compile-helper-runner.git
 cd pf-web-poly-compile-helper-runner
 
 # Build base + pf-runner images and install ~/.local/bin/pf
@@ -559,7 +597,7 @@ sudo ./install.sh --mode native
 ```
 
 What this does:
-1. Installs Python dependencies (fabric, lark)
+1. Installs Python dependencies (fabric, lark, typer)
 2. Copies pf-runner library to `/usr/local/lib/pf-runner` (or your prefix)
 3. Creates `pf` executable in `/usr/local/bin` (or your prefix/bin)
 
@@ -583,25 +621,41 @@ pf install-base  # Alias to install (for compatibility)
 **Native install (`./install.sh --mode native`):**
 - `pf` executable in `/usr/local/bin` (or `~/.local/bin`)
 - `pf-runner` library in `/usr/local/lib/pf-runner` (or `~/.local/lib/pf-runner`)
-- Python dependencies (fabric, lark)
+- Python dependencies (fabric, lark, typer)
 
 ## Quick Start
 
 ### 1. Install pf-runner
 
-The repository includes a **simple installer script** that sets up everything you need:
+The repository includes **one-command installation** that sets up everything you need:
 
-#### One-Command Installation (Recommended)
+#### Easiest Method (Recommended)
 
 ```bash
-# Container-first install (builds images and installs wrapper)
-./install.sh --runtime podman
-
-# System-wide wrapper install (requires sudo)
-sudo ./install.sh --runtime podman --prefix /usr/local
+git clone https://github.com/P4X-ng/pf-web-poly-compile-helper-runner.git
+cd pf-web-poly-compile-helper-runner
+./quick-install.sh
 ```
 
-The installer sets up the `pf` wrapper to run inside the pf-runner container.
+This automatically detects your system and chooses the best installation method.
+
+#### Alternative Methods
+
+**Container-first install:**
+```bash
+./install.sh --runtime podman
+```
+
+**Native install (no containers):**
+```bash
+./install.sh --mode native --prefix ~/.local
+```
+
+**Debian/Ubuntu package:**
+```bash
+cd debian && ./build-deb.sh
+sudo dpkg -i build/pf-runner_1.0.0.deb
+```
 
 #### Using pf Commands
 
