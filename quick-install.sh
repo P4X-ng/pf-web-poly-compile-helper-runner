@@ -62,20 +62,23 @@ main() {
     local os_type
     os_type=$(detect_os)
     
+    # Version to use (can be overridden by environment variable)
+    local PF_VERSION="${PF_VERSION:-1.0.0}"
+    
     # If we're in the repo, use the local installer
     if in_repo; then
         log_info "Detected repository - using local installer"
         
         # Check if we have a .deb package
-        if [[ "$os_type" == "debian" ]] && [[ -f "debian/build/pf-runner_1.0.0.deb" ]]; then
+        if [[ "$os_type" == "debian" ]] && [[ -f "debian/build/pf-runner_${PF_VERSION}.deb" ]]; then
             log_info "Found .deb package - installing via dpkg"
             if [[ $EUID -eq 0 ]]; then
-                dpkg -i debian/build/pf-runner_1.0.0.deb || true
+                dpkg -i "debian/build/pf-runner_${PF_VERSION}.deb" || true
                 apt-get install -f -y
                 log_success "Installed pf-runner from .deb package"
             else
                 log_error ".deb installation requires sudo"
-                log_info "Run: sudo dpkg -i debian/build/pf-runner_1.0.0.deb && sudo apt-get install -f"
+                log_info "Run: sudo dpkg -i debian/build/pf-runner_${PF_VERSION}.deb && sudo apt-get install -f"
                 exit 1
             fi
         else
