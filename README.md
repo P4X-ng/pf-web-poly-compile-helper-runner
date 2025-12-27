@@ -1438,6 +1438,10 @@ Additional documentation in `pf-runner/`:
 5. Run the test suite: `pf web-test`
 6. Submit a pull request
 
+### Issue Management
+
+For maintainers: To assign all open issues to GitHub Copilot for automated assistance, see [Bulk Assign Copilot Guide](docs/BULK_ASSIGN_COPILOT.md).
+
 ## License
 
 See LICENSE file for details.
