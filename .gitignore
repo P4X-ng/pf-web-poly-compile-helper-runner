@@ -49,3 +49,13 @@ pf-runner/*.spec
 # Note: Dockerfiles and quadlet configs ARE committed
 pfail.fail.pf
 __pycache__/
+
+# Editor temporary and backup files
+*~
+*.swp
+*.swo
+*.swn
+.#*
+\#*\#
+*.bak
+*.tmp
