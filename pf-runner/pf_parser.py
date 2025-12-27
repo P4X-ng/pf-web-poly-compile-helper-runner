@@ -824,7 +824,12 @@ def _load_pfy_source_with_includes(
         combined_text = always_available_text + "\n\n" + user_text
         return combined_text, combined_sources
     
-    # No Pfyfile found - return always-available tasks only (or PFY_EMBED if that doesn't exist)
+    # No Pfyfile found
+    # If user explicitly specified a file that doesn't exist, raise an error
+    if file_arg and not os.path.exists(pfy_resolved):
+        raise FileNotFoundError(f"Specified Pfyfile not found: {file_arg}")
+    
+    # Otherwise, return always-available tasks only (or PFY_EMBED if that doesn't exist)
     if always_available_text:
         return always_available_text, always_available_sources
     return PFY_EMBED, {}
