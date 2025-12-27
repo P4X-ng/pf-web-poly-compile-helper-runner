@@ -1113,7 +1113,11 @@ def get_alias_map(file_arg: Optional[str] = None) -> Dict[str, str]:
             for alias in task.aliases:
                 alias_map[alias] = name
         return alias_map
+    except FileNotFoundError:
+        # If file doesn't exist, just return empty map (this is expected in some cases)
+        return {}
     except Exception:
+        # For other errors, return empty map but this shouldn't normally happen
         return {}
 
 
