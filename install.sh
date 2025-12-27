@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# install.sh - Cohesive installer for pf-runner (container-first with native option)
-# Usage: ./install.sh [--mode container|native] [--runtime podman|docker] [--image NAME] [--prefix PATH] [--skip-deps] [--skip-build] [--no-wrapper] [--help]
+# install.sh - Cohesive installer for pf-runner (package-first with container and native fallback)
+# Usage: ./install.sh [--mode package|container|native] [--runtime podman|docker] [--image NAME] [--prefix PATH] [--skip-deps] [--skip-build] [--no-wrapper] [--help]
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Parse command line arguments
-MODE="container"
+MODE="package"  # Default to package mode
 PREFIX=""
 PREFIX_SET=false
 SKIP_DEPS=false
@@ -31,6 +31,8 @@ CONTAINER_IMAGE="${RUNNER_IMAGE_DEFAULT}"
 SKIP_BUILD=false
 NO_WRAPPER=false
 BUILD_ONLY=false
+PACKAGE_FORMATS=()
+FORCE_BUILD_PACKAGES=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -42,12 +44,28 @@ while [[ $# -gt 0 ]]; do
             MODE="${1#*=}"
             shift
             ;;
+        --package)
+            MODE="package"
+            shift
+            ;;
         --container)
             MODE="container"
             shift
             ;;
         --native|--host)
             MODE="native"
+            shift
+            ;;
+        --package-formats)
+            IFS=',' read -ra PACKAGE_FORMATS <<< "$2"
+            shift 2
+            ;;
+        --package-formats=*)
+            IFS=',' read -ra PACKAGE_FORMATS <<< "${1#*=}"
+            shift
+            ;;
+        --force-build-packages)
+            FORCE_BUILD_PACKAGES=true
             shift
             ;;
         --prefix)
@@ -117,15 +135,19 @@ done
 # Help function
 show_help() {
     cat << EOF
-pf-runner Installation Script (Container-first)
+pf-runner Installation Script (Package-first)
 
 USAGE:
     ./install.sh [OPTIONS]
 
 OPTIONS:
-    --mode MODE       Install mode: container (default) or native
+    --mode MODE       Install mode: package (default), container, or native
+    --package         Alias for --mode package
     --container       Alias for --mode container
     --native          Alias for --mode native
+
+    --package-formats FORMATS  Comma-separated list of package formats to try (deb,rpm,arch)
+    --force-build-packages     Force building packages even if system packages exist
 
     --runtime RUNTIME Container runtime (podman|docker). Implies container mode
     --image IMAGE     pf-runner image name:tag (default: ${RUNNER_IMAGE_DEFAULT})
@@ -140,8 +162,17 @@ OPTIONS:
     --help, -h        Show this help message
 
 EXAMPLES:
-    # Container-first install (user prefix by default)
-    ./install.sh --runtime podman
+    # Package-first install (tries native packages, falls back to container)
+    ./install.sh
+
+    # Force package building and installation
+    ./install.sh --mode package --force-build-packages
+
+    # Try only specific package formats
+    ./install.sh --mode package --package-formats deb,rpm
+
+    # Container-first install (legacy behavior)
+    ./install.sh --mode container --runtime podman
 
     # Native system-wide install (requires sudo)
     sudo ./install.sh --mode native
@@ -149,8 +180,12 @@ EXAMPLES:
     # Native user install
     ./install.sh --mode native --prefix ~/.local
 
-    # Build container images only
-    ./install.sh --mode container --build-only
+WHAT THIS SCRIPT DOES (package mode):
+    1. Detects available package managers (apt, dnf, pacman)
+    2. Tries to install pre-built packages if available
+    3. Falls back to building packages locally if needed
+    4. Falls back to container mode if package building fails
+    5. Falls back to native mode as last resort
 
 WHAT THIS SCRIPT DOES (container mode):
     1. Builds pf base + pf-runner images (optional)
@@ -192,8 +227,8 @@ log_error() {
 }
 
 normalize_settings() {
-    if [[ "$MODE" != "container" && "$MODE" != "native" ]]; then
-        log_error "Invalid --mode: $MODE (expected 'container' or 'native')"
+    if [[ "$MODE" != "package" && "$MODE" != "container" && "$MODE" != "native" ]]; then
+        log_error "Invalid --mode: $MODE (expected 'package', 'container', or 'native')"
         exit 1
     fi
 
@@ -206,10 +241,21 @@ normalize_settings() {
         if [[ "$SKIP_BUILD" == true || "$NO_WRAPPER" == true || "$BUILD_ONLY" == true ]]; then
             log_warning "Container-specific options ignored in native mode"
         fi
-    else
+        if [[ ${#PACKAGE_FORMATS[@]} -gt 0 || "$FORCE_BUILD_PACKAGES" == true ]]; then
+            log_warning "Package-specific options ignored in native mode"
+        fi
+    elif [[ "$MODE" == "container" ]]; then
         if [[ "$SKIP_DEPS" == true ]]; then
             log_warning "--skip-deps has no effect in container mode"
         fi
+        if [[ ${#PACKAGE_FORMATS[@]} -gt 0 || "$FORCE_BUILD_PACKAGES" == true ]]; then
+            log_warning "Package-specific options ignored in container mode"
+        fi
+    fi
+
+    # Set default package formats if none specified
+    if [[ "$MODE" == "package" && ${#PACKAGE_FORMATS[@]} -eq 0 ]]; then
+        PACKAGE_FORMATS=("deb" "rpm" "arch")
     fi
 
     if [[ "$PREFIX_SET" == false ]]; then
