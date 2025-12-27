@@ -1079,17 +1079,23 @@ def _exec_line_fabric(
             return 1
 
 
-def list_dsl_tasks_with_desc(file_arg: Optional[str] = None) -> List[Tuple[str, Optional[str]]]:
-    """List all tasks with their descriptions."""
+def list_dsl_tasks_with_desc(file_arg: Optional[str] = None) -> List[Tuple[str, Optional[str], List[str]]]:
+    """List all tasks with their descriptions and aliases."""
     try:
         dsl_src, task_sources = _load_pfy_source_with_includes(file_arg=file_arg)
         dsl_tasks = parse_pfyfile_text(dsl_src, task_sources)
         result = []
         for name, task in sorted(dsl_tasks.items()):
-            result.append((name, task.description))
+            result.append((name, task.description, task.aliases))
         return result
-    except Exception:
-        return []
+    except FileNotFoundError as e:
+        # Re-raise file not found errors so they can be handled appropriately
+        raise
+    except Exception as e:
+        # Log the error and re-raise so callers know what went wrong
+        import sys
+        print(f"Error loading tasks: {e}", file=sys.stderr)
+        raise
 
 
 def get_alias_map(file_arg: Optional[str] = None) -> Dict[str, str]:
