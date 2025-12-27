@@ -254,7 +254,7 @@ async function testCLI() {
     proc.on('error', reject);
     
     // Timeout after 60 seconds
-    globalThis.setTimeout(() => {
+    setTimeout(() => {
       proc.kill();
       reject(new Error('CLI execution timeout'));
     }, 60000);

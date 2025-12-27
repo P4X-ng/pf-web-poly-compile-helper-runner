@@ -18,10 +18,22 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Analysis configuration constants
+const CONFIG = {
+  MAX_FILES_TO_ANALYZE: 20,
+  LARGE_FILE_THRESHOLD: 500,
+  HIGH_COUPLING_THRESHOLD: 20
+};
+
 class CodeAnalyzer {
   constructor(options = {}) {
     this.rootDir = options.rootDir || process.cwd();
     this.verbose = options.verbose || false;
+    this.config = {
+      maxFilesToAnalyze: options.maxFilesToAnalyze || CONFIG.MAX_FILES_TO_ANALYZE,
+      largeFileThreshold: options.largeFileThreshold || CONFIG.LARGE_FILE_THRESHOLD,
+      highCouplingThreshold: options.highCouplingThreshold || CONFIG.HIGH_COUPLING_THRESHOLD
+    };
     this.results = {
       security: [],
       performance: [],
@@ -45,8 +57,8 @@ class CodeAnalyzer {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         cwd: options.cwd || this.rootDir,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        shell: true
+        stdio: ['pipe', 'pipe', 'pipe']
+        // Note: shell is not used here for security - we use bash -c explicitly when needed
       });
 
       let stdout = '';
@@ -176,7 +188,7 @@ class CodeAnalyzer {
 
       // Check for common Python security issues
       const pythonFiles = await this.findFiles('*.py', ['*/.venv/*', '*/node_modules/*']);
-      for (const file of pythonFiles.slice(0, 20)) { // Sample first 20 files
+      for (const file of pythonFiles.slice(0, this.config.maxFilesToAnalyze)) {
         try {
           const content = fs.readFileSync(path.join(this.rootDir, file), 'utf-8');
           
@@ -206,8 +218,9 @@ class CodeAnalyzer {
             });
           }
 
-          // Check for shell=True in subprocess
-          if (content.match(/subprocess\.[a-z_]+\([^)]*shell\s*=\s*True/i)) {
+          // Pattern matches subprocess calls with shell=True which can lead to command injection
+          const SUBPROCESS_SHELL_PATTERN = /subprocess\.[a-z_]+\([^)]*shell\s*=\s*True/i;
+          if (content.match(SUBPROCESS_SHELL_PATTERN)) {
             findings.push({
               category: 'Security',
               severity: 'high',
@@ -223,9 +236,9 @@ class CodeAnalyzer {
         }
       }
 
-      // Check JavaScript/TypeScript files for security issues
+      // Check JavaScript/TypeScript/TypeScript files for security issues
       const jsFiles = await this.findFiles('*.{js,mjs,ts}', ['*/node_modules/*', '*/dist/*']);
-      for (const file of jsFiles.slice(0, 20)) { // Sample first 20 files
+      for (const file of jsFiles.slice(0, this.config.maxFilesToAnalyze)) {
         try {
           const content = fs.readFileSync(path.join(this.rootDir, file), 'utf-8');
           
@@ -349,14 +362,14 @@ class CodeAnalyzer {
           const content = fs.readFileSync(path.join(this.rootDir, file), 'utf-8');
           const lines = content.split('\n').length;
           
-          if (lines > 500) {
+          if (lines > this.config.largeFileThreshold) {
             largeFileCount++;
             if (largeFileCount === 1) {
               findings.push({
                 category: 'Architecture',
                 severity: 'medium',
                 title: 'Large Files - Potential SRP Violation',
-                description: `Found ${largeFileCount} files with over 500 lines. Example: ${file} has ${lines} lines.`,
+                description: `Found ${largeFileCount} files with over ${this.config.largeFileThreshold} lines. Example: ${file} has ${lines} lines.`,
                 recommendation: 'Consider breaking large files into smaller, focused modules following Single Responsibility Principle.',
                 file: file
               });
@@ -377,7 +390,7 @@ class CodeAnalyzer {
             line.trim().match(/^(import|from)\s+/)
           );
           
-          if (importLines.length > 20) {
+          if (importLines.length > this.config.highCouplingThreshold) {
             findings.push({
               category: 'Architecture',
               severity: 'low',
