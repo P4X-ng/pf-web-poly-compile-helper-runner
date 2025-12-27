@@ -17,8 +17,8 @@ This document tracks known issues in pf_parser.py that were present before the c
 **Resolution**: BUILTINS dict is now properly defined
 
 ### 3. ~~Missing textwrap Import~~ ✅ RESOLVED
-**Line affected**: 226
-**Status**: ✅ FIXED - Added import on line 39
+**Line affected**: 237
+**Status**: ✅ FIXED - Added import on line 40
 **Issue**: `textwrap` module used but not imported
 **Resolution**: Added `import textwrap` at file top
 
