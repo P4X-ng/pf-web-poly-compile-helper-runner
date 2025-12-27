@@ -221,8 +221,10 @@ For more help on a specific subcommand:
                 modern_global_opts.append(arg)
                 i += 1
                 continue
-            elif arg.startswith('--env=') or arg.startswith('--hosts=') or arg.startswith('--host=') or \
-                 arg.startswith('--user=') or arg.startswith('--port=') or arg.startswith('--sudo-user='):
+            
+            # Check for --option=value format for various options
+            option_prefixes = ['--env=', '--hosts=', '--host=', '--user=', '--port=', '--sudo-user=']
+            if any(arg.startswith(prefix) for prefix in option_prefixes):
                 modern_global_opts.append(arg)
                 i += 1
                 continue

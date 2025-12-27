@@ -30,6 +30,7 @@ This module acts as the orchestrator, delegating to:
 import os
 import sys
 import shlex
+import traceback
 from typing import List, Dict, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -338,7 +339,6 @@ class PfRunner:
             return 1
         except Exception as e:
             print(f"Error listing tasks: {e}", file=sys.stderr)
-            import traceback
             print("\nTraceback:", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
             return 1
