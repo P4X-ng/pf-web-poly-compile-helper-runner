@@ -14,6 +14,7 @@
 
 import { spawn, execSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import { promises as fsPromises } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
@@ -139,7 +140,7 @@ function getContainerRuntime() {
 /**
  * Initialize switch directories
  */
-function initSwitchDirs() {
+async function initSwitchDirs() {
   const dirs = [
     CONFIG.switchBase,
     path.join(CONFIG.switchBase, 'snapshots'),
@@ -149,7 +150,7 @@ function initSwitchDirs() {
   ];
   
   for (const dir of dirs) {
-    fs.mkdirSync(dir, { recursive: true });
+    await fsPromises.mkdir(dir, { recursive: true });
   }
   
   return CONFIG.switchBase;
@@ -181,7 +182,7 @@ async function createSnapshot(name = null) {
           execCommand(`btrfs subvolume snapshot / ${snapshotDir}`);
         } else {
           // Fallback to rsync for non-subvolume root
-          fs.mkdirSync(snapshotDir, { recursive: true });
+          await fsPromises.mkdir(snapshotDir, { recursive: true });
           execCommand(`rsync -axHAWXS --numeric-ids --info=progress2 / ${snapshotDir}/ --exclude=/proc --exclude=/sys --exclude=/dev --exclude=/run --exclude=/tmp --exclude="${CONFIG.switchBase}"`);
         }
         break;
@@ -201,7 +202,7 @@ async function createSnapshot(name = null) {
       
       case 'rsync': {
         // rsync backup
-        fs.mkdirSync(snapshotDir, { recursive: true });
+        await fsPromises.mkdir(snapshotDir, { recursive: true });
         execCommand(`rsync -axHAWXS --numeric-ids / ${snapshotDir}/ --exclude=/proc --exclude=/sys --exclude=/dev --exclude=/run --exclude=/tmp --exclude="${CONFIG.switchBase}"`, {
           stdio: 'inherit'
         });
@@ -218,7 +219,7 @@ async function createSnapshot(name = null) {
       hostname: execCommand('hostname', { throwOnError: false })
     };
     
-    fs.writeFileSync(
+    await fsPromises.writeFile(
       path.join(CONFIG.switchBase, 'snapshots', `${snapshotName}.json`),
       JSON.stringify(metadata, null, 2)
     );
@@ -234,23 +235,24 @@ async function createSnapshot(name = null) {
 /**
  * List available snapshots
  */
-function listSnapshots() {
+async function listSnapshots() {
   const snapshotsDir = path.join(CONFIG.switchBase, 'snapshots');
   
-  if (!fs.existsSync(snapshotsDir)) {
+  try {
+    await fsPromises.access(snapshotsDir);
+  } catch {
     console.log(chalk.yellow('No snapshots found.'));
     return [];
   }
   
   const snapshots = [];
-  const files = fs.readdirSync(snapshotsDir);
+  const files = await fsPromises.readdir(snapshotsDir);
   
   for (const file of files) {
     if (file.endsWith('.json')) {
       try {
-        const metadata = JSON.parse(
-          fs.readFileSync(path.join(snapshotsDir, file), 'utf-8')
-        );
+        const content = await fsPromises.readFile(path.join(snapshotsDir, file), 'utf-8');
+        const metadata = JSON.parse(content);
         snapshots.push(metadata);
       } catch {}
     }
@@ -293,7 +295,7 @@ async function prepareTargetOS(targetOS, targetPartition) {
     
     // Create staging area
     const stagingDir = path.join(CONFIG.switchBase, 'staging', targetOS);
-    fs.mkdirSync(stagingDir, { recursive: true });
+    await fsPromises.mkdir(stagingDir, { recursive: true });
     
     // Export container filesystem
     spinner.text = `Exporting ${targetOS} filesystem...`;
@@ -340,7 +342,7 @@ async function performKexec(kernelPath, initrdPath, cmdline = null) {
   
   // Get current kernel cmdline if not specified
   if (!cmdline) {
-    cmdline = fs.readFileSync('/proc/cmdline', 'utf-8').trim();
+    cmdline = (await fsPromises.readFile('/proc/cmdline', 'utf-8')).trim();
   }
   
   try {
@@ -375,7 +377,7 @@ async function switchOS(targetOS, options = {}) {
   console.log(chalk.bold('═══════════════════════════════════════════════\n'));
   
   checkRoot();
-  initSwitchDirs();
+  await initSwitchDirs();
   
   const targetConfig = CONFIG.targetOS[targetOS];
   if (!targetConfig) {
@@ -416,7 +418,7 @@ async function switchOS(targetOS, options = {}) {
     console.log(chalk.cyan('\n[4/5] Syncing filesystem to target partition...'));
     
     const mountPoint = path.join(CONFIG.switchBase, 'mnt');
-    fs.mkdirSync(mountPoint, { recursive: true });
+    await fsPromises.mkdir(mountPoint, { recursive: true });
     
     try {
       // Mount target partition
@@ -428,13 +430,14 @@ async function switchOS(targetOS, options = {}) {
       });
       
       // Copy kernel and initrd
-      if (fs.existsSync(path.join(stagingDir, osConfig.kernel.slice(1)))) {
+      const kernelSrcPath = path.join(stagingDir, osConfig.kernel.slice(1));
+      try {
+        await fsPromises.access(kernelSrcPath);
         console.log(chalk.gray('  Copying kernel and initrd...'));
-        fs.cpSync(
-          path.join(stagingDir, osConfig.kernel.slice(1)),
-          path.join(mountPoint, osConfig.kernel.slice(1)),
-          { recursive: true }
-        );
+        // Use cp command for recursive copy as fs.promises.cp may not be available in older Node versions
+        execCommand(`cp -r ${kernelSrcPath} ${path.join(mountPoint, osConfig.kernel.slice(1))}`);
+      } catch {
+        // Kernel not found, skip
       }
       
       // Unmount
@@ -455,7 +458,19 @@ async function switchOS(targetOS, options = {}) {
   const kernelPath = path.join(stagingDir, osConfig.kernel.slice(1));
   const initrdPath = path.join(stagingDir, osConfig.initrd.slice(1));
   
-  if (fs.existsSync(kernelPath) && fs.existsSync(initrdPath)) {
+  // Check if both kernel and initrd exist using async access
+  let kernelExists = false;
+  let initrdExists = false;
+  try {
+    await fsPromises.access(kernelPath);
+    kernelExists = true;
+  } catch {}
+  try {
+    await fsPromises.access(initrdPath);
+    initrdExists = true;
+  } catch {}
+  
+  if (kernelExists && initrdExists) {
     if (!options.dryRun) {
       await performKexec(kernelPath, initrdPath);
     } else {
@@ -489,7 +504,7 @@ async function switchOS(targetOS, options = {}) {
 /**
  * Show status and help
  */
-function showStatus() {
+async function showStatus() {
   console.log(chalk.bold('\n═══════════════════════════════════════════════'));
   console.log(chalk.bold('  OS Switcher Status'));
   console.log(chalk.bold('═══════════════════════════════════════════════\n'));
@@ -500,7 +515,7 @@ function showStatus() {
     // Read os-release directly in Node.js
     let osName = 'Unknown';
     try {
-      const osRelease = fs.readFileSync('/etc/os-release', 'utf-8');
+      const osRelease = await fsPromises.readFile('/etc/os-release', 'utf-8');
       const match = osRelease.match(/^PRETTY_NAME="?([^"\n]+)"?/m);
       if (match) osName = match[1];
     } catch {}
@@ -529,7 +544,7 @@ function showStatus() {
   console.log('');
   
   // List snapshots
-  listSnapshots();
+  await listSnapshots();
 }
 
 /**
@@ -624,27 +639,27 @@ async function main() {
       
       case 'snapshot': {
         checkRoot();
-        initSwitchDirs();
+        await initSwitchDirs();
         const name = args[1];
         await createSnapshot(name);
         break;
       }
       
       case 'snapshots': {
-        initSwitchDirs();
-        listSnapshots();
+        await initSwitchDirs();
+        await listSnapshots();
         break;
       }
       
       case 'status': {
-        initSwitchDirs();
-        showStatus();
+        await initSwitchDirs();
+        await showStatus();
         break;
       }
       
       case 'prepare': {
         checkRoot();
-        initSwitchDirs();
+        await initSwitchDirs();
         const targetOS = args[1];
         if (!targetOS) {
           console.error(chalk.red('Usage: prepare <target-os>'));
